@@ -44,11 +44,16 @@ pub struct Settings {
     pub install_dir: Option<String>,
     /// Open the desktop full screen (the Windows key reaches Linux only then).
     pub full_screen: bool,
+    /// The desktop's size: None fits the screen (full screen) or the window, "screen" is the
+    /// screen's size even in a window, "WxH" a fixed size. The viewer scales it to the window.
+    pub resolution: Option<String>,
+    /// The most frames a second the desktop sends (and its refresh rate where it has one).
+    pub frame_rate: u32,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { install_dir: None, full_screen: true }
+        Settings { install_dir: None, full_screen: true, resolution: None, frame_rate: 60 }
     }
 }
 

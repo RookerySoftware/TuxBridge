@@ -28,6 +28,27 @@ WSL's own Hyper-V socket (about 650 MB/s measured), so there is nothing to confi
 
 All tested end to end from the app: Kali Xfce, Mint Cinnamon, Omarchy, Ubuntu GNOME.
 
+### Size, frame rate and full screen
+
+Settings has a resolution (Automatic: the screen's size in full screen, the window's in a
+window; or the screen's size, 4K, 1440p, 1080p, scaled to the window) and a frame-rate limit
+(60 to 240), passed as `--fps` to the agent and, where the desktop has one, as its refresh rate
+(GNOME's virtual monitor `WxH@R`, Hyprland's monitor rule). Full screen is borderless; it is
+switched with Ctrl+Alt+Enter or "Full screen" in the window's menu, and a hint says how to leave
+it for four seconds after it starts.
+
+Measured on an RTX 4060 PC (2026-10-26), limit 144:
+
+| Desktop | Size | Updates a second | What limits it |
+| --- | --- | --- | --- |
+| Xfce (Xvfb) | 4K, 1080p window animating | about 59 | Xfce's compositor paces itself at 60 |
+| Xfce (Xvfb) | 4K, whole screen animating | about 30 | Drawing on the CPU (llvmpipe) |
+| Hyprland (GPU) | 4K | 37 to 39 | Hyprland's screen copy: 25 to 35 ms to read 4K back from the GPU |
+| Hyprland (GPU) | 1440p / 1080p | about 48 | The copy: 26 / 16 ms |
+
+Higher rates would need the picture to stay on the GPU (encoded there) instead of being read
+back for every frame. `EASYWSL_AGENT_DEBUG=1` makes the agent log the copy and send times.
+
 ### X11 desktops
 
 `desktop-setup.sh` installs the desktop and Xvfb; `desktop-start.sh` runs the session on it in

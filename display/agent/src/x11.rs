@@ -3,7 +3,7 @@
 //! shape; XTest takes the input.
 
 use std::error::Error;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use easywsl_protocol::{Event, Input};
 use x11rb::connection::Connection;
@@ -16,8 +16,6 @@ use crate::sender::{Frame, Sender};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// The shortest time between two frames: the screen is read at most 60 times a second.
-const FRAME_INTERVAL: Duration = Duration::from_millis(16);
 
 pub fn run() -> Result<()> {
     let (conn, screen) = x11rb::connect(None).map_err(|e| format!("no X display (is the desktop session running?): {e}"))?;
@@ -71,7 +69,7 @@ pub fn run() -> Result<()> {
         if !damaged {
             continue;
         }
-        let wait = FRAME_INTERVAL.saturating_sub(last.elapsed());
+        let wait = crate::frame_interval().saturating_sub(last.elapsed());
         if !wait.is_zero() {
             std::thread::sleep(wait);
         }
@@ -79,7 +77,7 @@ pub fn run() -> Result<()> {
         // Take what changed so far (and reset it), and read back the area around it.
         conn.damage_subtract(damage, x11rb::NONE, region)?;
         let extents = conn.xfixes_fetch_region(region)?.reply()?.extents;
-        if std::env::var_os("EASYWSL_AGENT_DEBUG").is_some() {
+        if crate::debug() {
             eprintln!("easywsl-agent: damage {extents:?}");
         }
         let (x, y) = (extents.x.max(0) as u32, extents.y.max(0) as u32);

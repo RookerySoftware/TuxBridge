@@ -82,11 +82,16 @@ fn write_loop(shared: Arc<(Mutex<Slot>, Condvar)>) {
                 return;
             }
         }
+        let started = std::time::Instant::now();
         let base = if full || resized { None } else { previous.as_ref().map(|p| p.pixels.as_slice()) };
         let tiles = changed_tiles(&frame.pixels, base, frame.width, frame.height, frame.stride);
+        let tiles_sent = tiles.len();
         if !tiles.is_empty() && ((Event::Frame { tiles }).write(&mut out).is_err() || out.flush().is_err()) {
             // The viewer is gone.
             std::process::exit(0);
+        }
+        if crate::debug() {
+            eprintln!("easywsl-agent: sent {} tiles in {:?}", tiles_sent, started.elapsed());
         }
         previous = Some(frame);
     }

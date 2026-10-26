@@ -42,13 +42,42 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
       </Card>
 
       <Card className="space-y-5 p-5">
-        <h2 className="font-display font-semibold">Hyprland desktop</h2>
+        <h2 className="font-display font-semibold">Desktops</h2>
         <Toggle
           checked={settings.fullScreen}
           onChange={(v) => save({ ...settings, fullScreen: v })}
           label="Open full screen"
-          description="Only full screen do the Windows key and Alt+Tab reach Linux. Ctrl+Alt+Enter switches between full screen and a window."
+          description="Borderless, over the whole screen. Ctrl+Alt+Enter, or Full screen in the window's menu (its icon at the top left), switches between full screen and a window at any time."
         />
+        <Field
+          label="Resolution"
+          hint="Automatic uses the screen's full resolution in full screen and the window's size in a window. Another size is scaled to fit the window or screen."
+        >
+          <select
+            className={inputClass}
+            value={settings.resolution ?? ""}
+            onChange={(e) => save({ ...settings, resolution: e.target.value || null })}
+          >
+            <option value="">Automatic</option>
+            <option value="screen">The screen's resolution, also in a window</option>
+            <option value="3840x2160">3840 x 2160 (4K)</option>
+            <option value="2560x1440">2560 x 1440</option>
+            <option value="1920x1080">1920 x 1080</option>
+          </select>
+        </Field>
+        <Field
+          label="Frame rate"
+          hint="The most frames a second the desktop sends. For now desktops reach about 50 to 60 a second at 1920 x 1080 and 30 to 40 at 4K, so higher limits mainly help smaller sizes."
+        >
+          <select className={inputClass} value={settings.frameRate} onChange={(e) => save({ ...settings, frameRate: Number(e.target.value) })}>
+            {[60, 120, 144, 240].map((r) => (
+              <option key={r} value={r}>
+                {r} frames a second
+              </option>
+            ))}
+          </select>
+        </Field>
+        <p className="text-xs text-muted">Changes apply the next time a desktop opens.</p>
       </Card>
 
       <Card className="space-y-1 p-5 text-sm text-muted">

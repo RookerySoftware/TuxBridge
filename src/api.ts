@@ -99,6 +99,9 @@ export interface Listing {
 export interface Settings {
   installDir: string | null;
   fullScreen: boolean;
+  /** null: fit the screen or window; "screen": the screen's size; "WxH": a fixed size. */
+  resolution: string | null;
+  frameRate: number;
 }
 
 export interface InstallRequest {
@@ -182,7 +185,7 @@ const mockState = {
     { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, desktop: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true }, catalog: null, busy: false },
   ] as Distro[],
   jobs: [] as Job[],
-  settings: { installDir: null, fullScreen: true } as Settings,
+  settings: { installDir: null, fullScreen: true, resolution: null, frameRate: 60 } as Settings,
 };
 
 function emit(event: string, detail: unknown) {

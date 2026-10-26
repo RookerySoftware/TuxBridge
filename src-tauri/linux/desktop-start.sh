@@ -3,11 +3,12 @@
 # hands it to EasyWSL's viewer through easywsl-agent, whose stdin and stdout are this script's
 # (wsl.exe connects them to the viewer). Run as root inside the distro:
 #
-#   desktop-start.sh run USER DESKTOP WIDTHxHEIGHT AGENT [SCALE]   until the viewer closes or
+#   desktop-start.sh run USER DESKTOP WIDTHxHEIGHT AGENT [SCALE [FPS]]   until the viewer closes or
 #                                                                   the session ends
 #   desktop-start.sh stop                                           ends a running session
 #
-# SCALE is Windows' display scaling (1.5 for 150 %); the desktop's text is scaled to match.
+# SCALE is Windows' display scaling (1.5 for 150 %); the desktop's text is scaled to match. FPS
+# is the most frames a second the agent sends (default 60).
 # Nothing but the agent may write to stdout: everything else goes to
 # /run/easywsl/desktop-USER.log. Everything runs in a private mount namespace: WSLg keeps
 # /tmp/.X11-unix read-only, and the X server needs its own socket there.
@@ -51,7 +52,7 @@ if [ "$1" = run ]; then
 fi
 
 shift
-U=${1:?user} DESKTOP=${2:?desktop} SIZE=${3:?size} AGENT=${4:?agent} SCALE=${5:-1}
+U=${1:?user} DESKTOP=${2:?desktop} SIZE=${3:?size} AGENT=${4:?agent} SCALE=${5:-1} FPS=${6:-60}
 UID_=$(id -u "$U") || exit 1
 R=/run/user/$UID_
 DISPLAY_NUM=1
@@ -78,6 +79,15 @@ H=$(getent passwd "$U" | cut -d: -f6)
 if [ "$DESKTOP" = kde ]; then
     su "$U" -c "kwriteconfig6 --file kwinrc --group Compositing --key Enabled false; \
                 kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false" || true
+fi
+
+# Kali names qterminal as Xfce's terminal, which is not installed here; Ctrl+Alt+T would ask
+# which terminal to use. The user gets Xfce's own instead, whenever the named one is missing.
+if [ "$DESKTOP" = xfce ]; then
+    term=$(sed -n 's/^TerminalEmulator=//p' /etc/xdg/xfce4/helpers.rc 2> /dev/null)
+    if [ -n "$term" ] && ! command -v "$term" > /dev/null && [ ! -e "$H/.config/xfce4/helpers.rc" ]; then
+        su "$U" -c "mkdir -p '$H/.config/xfce4' && echo TerminalEmulator=xfce4-terminal > '$H/.config/xfce4/helpers.rc'"
+    fi
 fi
 
 # Xfce keeps its wallpaper per monitor name, and the distro's default names physical monitors;
@@ -140,7 +150,7 @@ su - "$U" -c "env -u WAYLAND_DISPLAY DISPLAY=:$DISPLAY_NUM XDG_RUNTIME_DIR=$R XD
     XDG_CURRENT_DESKTOP= dbus-run-session -- sh -c '$scaling; exec $session'" 3>&- 4<&- &
 session_pid=$!
 
-runuser -u "$U" -- env DISPLAY=:$DISPLAY_NUM "$AGENT" x11 <&4 >&3 &
+runuser -u "$U" -- env DISPLAY=:$DISPLAY_NUM "$AGENT" --fps "$FPS" x11 <&4 >&3 &
 agent=$!
 exec 3>&- 4<&-
 

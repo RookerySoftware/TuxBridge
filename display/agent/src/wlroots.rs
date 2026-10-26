@@ -7,7 +7,7 @@ use std::error::Error;
 use std::os::fd::{AsFd, FromRawFd, OwnedFd};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use easywsl_protocol::{Event, Input};
 use wayland_client::globals::{GlobalListContents, registry_queue_init};
@@ -22,8 +22,6 @@ use crate::sender::{Frame, Sender};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// The shortest time between two frames: at most 60 a second.
-const FRAME_INTERVAL: Duration = Duration::from_millis(16);
 
 #[derive(Default)]
 struct State {
@@ -170,6 +168,7 @@ pub fn run() -> Result<()> {
             first = true;
         }
         let shm_buffer = buffer.as_ref().unwrap();
+        let t_copy = Instant::now();
         // After the first copy, wait for the screen to change.
         if first || frame.version() < 2 {
             frame.copy(&shm_buffer.buffer);
@@ -185,6 +184,7 @@ pub fn run() -> Result<()> {
             continue;
         }
 
+        let t_ready = Instant::now();
         let (format, width, height, stride) = key;
         size.0.store(width, Ordering::Relaxed);
         size.1.store(height, Ordering::Relaxed);
@@ -201,8 +201,11 @@ pub fn run() -> Result<()> {
             }
         }
         sender.frame(Frame { width, height, stride: stride as usize, pixels });
+        if crate::debug() {
+            eprintln!("easywsl-agent: copy {:?}, process {:?}", t_ready - t_copy, t_ready.elapsed());
+        }
 
-        let wait = FRAME_INTERVAL.saturating_sub(last.elapsed());
+        let wait = crate::frame_interval().saturating_sub(last.elapsed());
         if !wait.is_zero() {
             std::thread::sleep(wait);
         }

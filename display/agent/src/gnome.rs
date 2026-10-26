@@ -279,7 +279,7 @@ fn stream_frames(node: u32, sender: Sender) -> Result<()> {
     let _listener = stream
         .add_local_listener_with_user_data(StreamData { format: Default::default(), sender, params })
         .param_changed(|stream, data, id, param| {
-            if std::env::var_os("EASYWSL_AGENT_DEBUG").is_some() {
+            if crate::debug() {
                 eprintln!("easywsl-agent: param {id} {}", if param.is_some() { "set" } else { "cleared" });
             }
             let Some(param) = param else { return };
@@ -301,7 +301,7 @@ fn stream_frames(node: u32, sender: Sender) -> Result<()> {
                 return;
             }
             let buffer = (*raw).buffer;
-            if std::env::var_os("EASYWSL_AGENT_DEBUG").is_some() {
+            if crate::debug() {
                 let metas: Vec<(u32, u32)> = (0..(*buffer).n_metas as usize).map(|i| { let m = &*(*buffer).metas.add(i); (m.type_, m.size) }).collect();
                 eprintln!("easywsl-agent: buffer metas {metas:?}");
             }
@@ -356,7 +356,7 @@ fn stream_frames(node: u32, sender: Sender) -> Result<()> {
             Choice,
             Range,
             Fraction,
-            spa::utils::Fraction { num: 60, denom: 1 },
+            spa::utils::Fraction { num: crate::FPS.load(std::sync::atomic::Ordering::Relaxed), denom: 1 },
             spa::utils::Fraction { num: 0, denom: 1 },
             spa::utils::Fraction { num: 240, denom: 1 }
         ),

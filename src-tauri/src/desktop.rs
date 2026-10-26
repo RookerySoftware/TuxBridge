@@ -130,12 +130,29 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
     let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
     let agent = format!("{linux}/easywsl-agent");
 
-    // Real pixels, one desktop pixel per screen pixel; the desktop scales its text (Hyprland
-    // everything) as Windows does.
+    // Real pixels by default, one desktop pixel per screen pixel; the desktop scales its text
+    // (Hyprland everything) as Windows does.
+    let settings = store.settings();
     let ((mw, mh), scale) = monitor(app);
-    let (w, h) = if full_screen { (mw, mh) } else { ((1600.0 * scale) as u32, (900.0 * scale) as u32) };
-    let size = format!("{w}x{h}");
+    let fixed = match settings.resolution.as_deref() {
+        Some("screen") => Some((mw, mh)),
+        Some(r) => r.split_once('x').and_then(|(w, h)| Some((w.parse::<u32>().ok()?, h.parse::<u32>().ok()?))).filter(|&(w, h)| w >= 640 && h >= 480),
+        None => None,
+    };
+    let (w, h, scale) = match fixed {
+        // A fixed size is drawn scaled to the window or screen: the desktop's own scaling keeps
+        // things the size Windows shows them at, but never smaller than 100 %.
+        Some((w, h)) => (w, h, (scale * h as f64 / mh as f64).max(1.0)),
+        None if full_screen => (mw, mh, scale),
+        None => ((1600.0 * scale) as u32, (900.0 * scale) as u32, scale),
+    };
+    // Even sizes: some desktops refuse odd ones.
+    let size = format!("{}x{}", w & !1, h & !1);
+    // The viewer's window (when not full screen): 1600x900 as Windows scales it.
+    let ((_, _), windows_scale) = monitor(app);
+    let window_size = format!("{}x{}", (1600.0 * windows_scale) as u32, (900.0 * windows_scale) as u32);
     let scale_text = format!("{scale:.2}");
+    let fps = settings.frame_rate.clamp(30, 240).to_string();
 
     let mut user = info.user.clone();
     if user.is_none() {
@@ -148,7 +165,7 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
             // The launcher shipped with this app, which knows --agent; the one installed in the
             // distro may be older.
             let engine = crate::engine::prepare(app).map_err(|e| e.to_string())?;
-            (vec!["bash".into(), format!("{engine}/hyprland-wsl"), size.clone(), "--scale".into(), scale_text, "--agent".into(), agent], None)
+            (vec!["bash".into(), format!("{engine}/hyprland-wsl"), size.clone(), "--scale".into(), scale_text, "--fps".into(), fps, "--agent".into(), agent], None)
         }
         Kind::Own => {
             let (Some(desktop), Some(user)) = (info.desktop.clone(), user.clone()) else {
@@ -156,10 +173,10 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
             };
             if desktop == "gnome" {
                 let log = format!("/run/easywsl/gnome-{user}.log");
-                (vec!["bash".into(), format!("{linux}/gnome-start.sh"), user, size.clone(), agent, scale_text], Some(log))
+                (vec!["bash".into(), format!("{linux}/gnome-start.sh"), user, size.clone(), agent, scale_text, fps], Some(log))
             } else {
                 let log = format!("/run/easywsl/desktop-{user}.log");
-                (vec!["bash".into(), format!("{linux}/desktop-start.sh"), "run".into(), user, desktop, size.clone(), agent, scale_text], Some(log))
+                (vec!["bash".into(), format!("{linux}/desktop-start.sh"), "run".into(), user, desktop, size.clone(), agent, scale_text, fps], Some(log))
             }
         }
     };
@@ -168,7 +185,7 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
     if full_screen {
         args.push("--fullscreen".into());
     }
-    args.extend(["--size".into(), size, "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
+    args.extend(["--size".into(), window_size, "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
     args.push(wsl::exe().to_string_lossy().into_owned());
     args.extend(["-d", distro, "-u", "root", "-e"].map(String::from));
     args.extend(command);

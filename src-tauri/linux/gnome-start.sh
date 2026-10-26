@@ -3,9 +3,10 @@
 # easywsl-agent, whose stdin and stdout are this script's (wsl.exe connects them to the viewer).
 # Run as root inside the distro:
 #
-#   gnome-start.sh USER WIDTHxHEIGHT [AGENT [SCALE]]
+#   gnome-start.sh USER WIDTHxHEIGHT [AGENT [SCALE [FPS]]]
 #
-# SCALE is Windows' display scaling (1.5 for 150 %); GNOME's text is scaled to match. The part
+# SCALE is Windows' display scaling (1.5 for 150 %); GNOME's text is scaled to match. FPS is the
+# most frames a second (default 60). The part
 # that runs as the user is gnome-session.sh, next to this script.
 #
 # Nothing but the agent may write to stdout: everything else goes to /run/easywsl/gnome-USER.log.
@@ -15,6 +16,7 @@ U=${1:?user}
 SIZE=${2:?size}
 AGENT=${3:-easywsl-agent}
 SCALE=${4:-1}
+FPS=${5:-60}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 UID_=$(id -u "$U") || exit 1
@@ -42,5 +44,5 @@ fi
 # A private mount namespace with its own /tmp/.X11-unix for GNOME's Xwayland (WSLg keeps the
 # real one read-only); the session runs as the user.
 exec unshare --mount --propagation private -- /bin/sh -c '
-    mount -t tmpfs -o mode=1777 tmpfs /tmp/.X11-unix && exec runuser -u "$1" -- "$2" "$3" "$4" "$5" "$6" "$7"
-' gnome-start "$U" "$HERE/gnome-session.sh" "$R" "$SIZE" "$AGENT" "$log" "$SCALE"
+    mount -t tmpfs -o mode=1777 tmpfs /tmp/.X11-unix && exec runuser -u "$1" -- "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+' gnome-start "$U" "$HERE/gnome-session.sh" "$R" "$SIZE" "$AGENT" "$log" "$SCALE" "$FPS"

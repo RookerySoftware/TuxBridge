@@ -2,10 +2,10 @@
 # The user's part of gnome-start.sh: GNOME Shell headless, then easywsl-agent on this script's
 # stdin and stdout. Run as the user, in gnome-start.sh's mount namespace:
 #
-#   gnome-session.sh RUNTIME_DIR WIDTHxHEIGHT AGENT LOG SCALE
+#   gnome-session.sh RUNTIME_DIR WIDTHxHEIGHT AGENT LOG SCALE FPS
 
 set -uo pipefail
-R=$1 SIZE=$2 AGENT=$3 LOG=$4 SCALE=$5
+R=$1 SIZE=$2 AGENT=$3 LOG=$4 SCALE=$5 FPS=${6:-60}
 exec 2>> "$LOG"
 
 unset WAYLAND_DISPLAY DISPLAY
@@ -19,7 +19,8 @@ gsettings set org.gnome.desktop.interface text-scaling-factor "$SCALE"
 gsettings set org.gnome.desktop.lockdown disable-lock-screen true
 gsettings set org.gnome.desktop.screensaver lock-enabled false
 
-gnome-shell --headless --virtual-monitor "$SIZE" --mode=ubuntu >> "$LOG" 2>&1 &
+# The virtual monitor refreshes at the frame rate the viewer gets.
+gnome-shell --headless --virtual-monitor "$SIZE@$FPS" --mode=ubuntu >> "$LOG" 2>&1 &
 shell=$!
 trap 'kill $shell 2> /dev/null' EXIT
 
@@ -30,4 +31,4 @@ for _ in $(seq 150); do
     kill -0 $shell 2> /dev/null || { echo "gnome-shell ended" >&2; exit 1; }
     sleep 0.2
 done
-"$AGENT" gnome
+"$AGENT" --fps "$FPS" gnome

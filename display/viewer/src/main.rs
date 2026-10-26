@@ -5,12 +5,14 @@
 //!
 //!   easywsl-viewer [--fullscreen] [--title TITLE] [--size WxH] -- COMMAND [ARGS...]
 //!
-//! Ctrl+Alt+Enter switches between full screen and a window. Closing the window ends the command
+//! Ctrl+Alt+Enter, or "Full screen" in the window's menu, switches between borderless full screen
+//! and a window. Closing the window ends the command
 //! (its input is closed first, so it can end the session itself). Exit code 3: the command ended
 //! before it sent a picture.
 
 #![windows_subsystem = "windows"]
 
+mod fullscreen;
 mod hook;
 mod keys;
 
@@ -37,13 +39,17 @@ struct Desktop {
     pixels: Vec<u8>,
 }
 
-enum Message {
+pub enum Message {
     /// New pixels arrived.
     Frame,
     /// The agent ended (the desktop session closed); the text says why, when it is known.
     Ended(String),
     /// The desktop's pointer took a new shape (RGBA), or was hidden (no pixels).
     Cursor { hot_x: u16, hot_y: u16, width: u16, height: u16, rgba: Vec<u8> },
+    /// Full screen or a window (from the window's menu).
+    ToggleFullscreen,
+    /// The full-screen hint's time is up.
+    HintOver,
 }
 
 /// Writes input to the agent; shared with the keyboard hook's thread.
@@ -113,14 +119,33 @@ struct App {
     ended: Option<String>,
     /// A picture has arrived.
     pictured: bool,
+    proxy: EventLoopProxy<Message>,
+    /// Until when the full-screen hint shows.
+    hint_until: Option<std::time::Instant>,
 }
 
 impl App {
-    fn toggle_fullscreen(&self) {
+    fn toggle_fullscreen(&mut self) {
         if let Some(w) = &self.window {
             let full = w.fullscreen().is_some();
             w.set_fullscreen(if full { None } else { Some(Fullscreen::Borderless(None)) });
+            if full {
+                self.hint_until = None;
+            } else {
+                self.show_hint();
+            }
         }
+    }
+
+    /// Says for a few seconds how to leave full screen.
+    fn show_hint(&mut self) {
+        const SHOWN: std::time::Duration = std::time::Duration::from_secs(4);
+        self.hint_until = Some(std::time::Instant::now() + SHOWN);
+        let proxy = self.proxy.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(SHOWN);
+            let _ = proxy.send_event(Message::HintOver);
+        });
     }
 
     fn release_all(&mut self) {
@@ -191,6 +216,9 @@ impl App {
         }
         drop(desktop);
         let _ = buffer.present();
+        if self.hint_until.is_some_and(|t| t > std::time::Instant::now()) {
+            fullscreen::draw_hint(window);
+        }
     }
 
     fn pointer(&self, position: PhysicalPosition<f64>) {
@@ -223,6 +251,10 @@ impl ApplicationHandler<Message> for App {
         let context = softbuffer::Context::new(window.clone()).expect("drawing context");
         self.surface = Some(softbuffer::Surface::new(&context, window.clone()).expect("drawing surface"));
         hook::set_window(&window);
+        fullscreen::add_menu_item(&window, self.proxy.clone());
+        if self.args.fullscreen {
+            self.show_hint();
+        }
         self.window = Some(window);
     }
 
@@ -230,6 +262,13 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Frame => {
                 self.pictured = true;
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
+            }
+            Message::ToggleFullscreen => self.toggle_fullscreen(),
+            Message::HintOver => {
+                self.hint_until = None;
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
@@ -388,6 +427,7 @@ fn main() {
     let proxy = event_loop.create_proxy();
     {
         let desktop = desktop.clone();
+        let proxy = proxy.clone();
         std::thread::spawn(move || read_events(stdout, desktop, proxy));
     }
     hook::install(input.clone());
@@ -405,6 +445,8 @@ fn main() {
         placement: (0.0, 0.0, 1.0),
         ended: None,
         pictured: false,
+        proxy,
+        hint_until: None,
     };
     let _ = event_loop.run_app(&mut app);
     let _ = app.child.kill();
