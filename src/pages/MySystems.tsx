@@ -1,0 +1,359 @@
+// The systems on this PC: what they are, whether they run, and the things to do with them.
+
+import { useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle, FolderOpen, Loader2, LayoutDashboard, MoreHorizontal, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
+} from "lucide-react";
+import { api, type Distro, type Job, type Session } from "../api";
+import { Badge, Button, Card, Dialog, IconButton, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
+import JobCard from "../components/JobCard";
+
+function Menu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; hidden?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <IconButton label="More" onClick={() => setOpen(!open)}>
+        <MoreHorizontal className="size-4" />
+      </IconButton>
+      {open && (
+        <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-line bg-surface p-1 shadow-xl animate-in">
+          {items.filter((i) => !i.hidden).map((i) => (
+            <button
+              key={i.label}
+              onClick={() => {
+                setOpen(false);
+                i.onClick();
+              }}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-surface-2 ${i.danger ? "text-bad" : ""}`}
+            >
+              {i.icon}
+              {i.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const foreign = !distro.info.createdByEasywsl;
+  return (
+    <Dialog title={`Remove ${distro.name}?`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-muted">
+          This deletes the system and <b className="text-ink">everything in it</b>: its files, its programs, its settings. It cannot be
+          undone. Your Windows files are not touched.
+        </p>
+        {foreign && (
+          <Notice tone="warn" icon={<AlertTriangle className="size-4 text-warn" />}>
+            EasyWSL did not install this system, so it may hold work of yours. Copy anything you need first (<i>Open files</i>).
+          </Notice>
+        )}
+        <Field label={`Type ${distro.name} to confirm`}>
+          <input className={inputClass} value={typed} onChange={(e) => setTyped(e.target.value)} spellCheck={false} />
+        </Field>
+        {error && <Notice tone="bad">{error}</Notice>}
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose}>Keep it</Button>
+          <Button
+            variant="danger"
+            busy={busy}
+            disabled={typed !== distro.name}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api.remove(distro.name);
+                onClose();
+              } catch (e) {
+                setError(String(e));
+                setBusy(false);
+              }
+            }}
+          >
+            Remove
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function AddHyprlandDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
+  const [windowsKey, setWindowsKey] = useState(true);
+  const [thirdParty, setThirdParty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const needsThirdParty = distro.catalog?.thirdParty;
+  return (
+    <Dialog title="Add the Hyprland desktop" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-muted">
+          Hyprland is a modern Linux desktop where windows arrange themselves in tiles. It opens full screen in its own window on
+          Windows. Installing it takes 2 to 5 minutes.
+        </p>
+        {distro.catalog?.hyprlandNote && <Notice>{distro.catalog.hyprlandNote}</Notice>}
+        <Toggle
+          checked={windowsKey}
+          onChange={setWindowsKey}
+          label="Use the Windows key for the desktop's shortcuts"
+          description="Recommended. Off: the Alt key instead."
+        />
+        {needsThirdParty && (
+          <Toggle checked={thirdParty} onChange={setThirdParty} label="Allow the community package sources" description={needsThirdParty} />
+        )}
+        {error && <Notice tone="bad">{error}</Notice>}
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            busy={busy}
+            disabled={!!needsThirdParty && !thirdParty}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api.addHyprland(distro.name, windowsKey ? "SUPER" : "ALT", thirdParty);
+                onClose();
+              } catch (e) {
+                setError(String(e));
+                setBusy(false);
+              }
+            }}
+          >
+            Add Hyprland
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; session?: Session; onSessionDismiss: () => void }) {
+  const [dialog, setDialog] = useState<"remove" | "hyprland" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const title = distro.catalog?.title ?? distro.name;
+  const accent = distro.catalog?.accent ?? "#6b7280";
+  const canAddHyprland = !distro.info.hyprland && distro.catalog?.hyprland === "optional";
+  const desktopBusy = session?.state === "starting" || session?.state === "running";
+
+  const run = (action: () => Promise<void>) => () => {
+    setError(null);
+    action().catch((e) => setError(String(e)));
+  };
+
+  return (
+    <Card className="p-5 animate-in">
+      <div className="flex items-start gap-4">
+        <Monogram title={title} accent={accent} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-display text-base font-semibold">{distro.name}</h3>
+            {distro.isDefault && (
+              <span title="Opens when you type wsl in a terminal">
+                <Star className="size-3.5 fill-warn text-warn" />
+              </span>
+            )}
+          </div>
+          <div className="text-sm text-muted">{distro.catalog ? title : "Linux system"}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {distro.busy ? (
+              <Badge tone="accent">
+                <Loader2 className="size-3 animate-spin" /> Changing
+              </Badge>
+            ) : distro.running ? (
+              <Badge tone="good">● Running</Badge>
+            ) : (
+              <Badge>Stopped</Badge>
+            )}
+            {distro.info.hyprland && <Badge tone="accent">Hyprland desktop</Badge>}
+            {distro.wslVersion === 1 && <Badge tone="warn">WSL 1</Badge>}
+          </div>
+        </div>
+        <Menu
+          items={[
+            { label: "Stop", icon: <Power className="size-4" />, onClick: run(() => api.stop(distro.name)), hidden: !distro.running },
+            { label: "Make default", icon: <Star className="size-4" />, onClick: run(() => api.setDefault(distro.name)), hidden: distro.isDefault },
+            { label: "Add the Hyprland desktop", icon: <Sparkles className="size-4" />, onClick: () => setDialog("hyprland"), hidden: !canAddHyprland },
+            { label: "Remove…", icon: <Trash2 className="size-4" />, onClick: () => setDialog("remove"), danger: true },
+          ]}
+        />
+      </div>
+
+      {session && session.state !== "running" && (
+        <div className="mt-4">
+          {session.state === "failed" ? (
+            <Notice tone="bad" icon={<AlertTriangle className="size-4 text-bad" />}>
+              <p>{session.message}</p>
+              <button className="text-xs underline" onClick={onSessionDismiss}>
+                Dismiss
+              </button>
+            </Notice>
+          ) : (
+            <Notice icon={<Loader2 className="size-4 animate-spin text-accent" />}>{session.message ?? "Starting"}</Notice>
+          )}
+        </div>
+      )}
+      {error && (
+        <div className="mt-4">
+          <Notice tone="bad">{error}</Notice>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {distro.info.hyprland && (
+          <Button
+            variant="primary"
+            icon={<LayoutDashboard className="size-4" />}
+            disabled={distro.busy || desktopBusy}
+            onClick={run(() => api.openDesktop(distro.name))}
+          >
+            {session?.state === "running" ? "Desktop is open" : distro.info.firstStartPending ? "Set up and open" : "Open desktop"}
+          </Button>
+        )}
+        <Button
+          variant={distro.info.hyprland ? "secondary" : "primary"}
+          icon={<SquareTerminal className="size-4" />}
+          disabled={distro.busy || distro.info.firstStartPending}
+          onClick={run(() => api.openTerminal(distro.name))}
+        >
+          Terminal
+        </Button>
+        <Button icon={<FolderOpen className="size-4" />} disabled={distro.busy || distro.info.firstStartPending} onClick={run(() => api.openFiles(distro.name))}>
+          Files
+        </Button>
+      </div>
+
+      {dialog === "remove" && <RemoveDialog distro={distro} onClose={() => setDialog(null)} />}
+      {dialog === "hyprland" && <AddHyprlandDialog distro={distro} onClose={() => setDialog(null)} />}
+    </Card>
+  );
+}
+
+/** WSL stopped answering: say so plainly, and offer the restart (which stops every system). */
+function NotResponding({ onRestarted }: { onRestarted: () => void }) {
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <Notice tone="warn" icon={<AlertTriangle className="size-4 text-warn" />}>
+        <p className="font-medium">WSL is not responding</p>
+        <p className="text-muted">
+          Windows' Linux support stopped answering, so EasyWSL cannot see or start your systems right now. Restarting WSL usually
+          fixes it.
+        </p>
+        <div className="pt-1">
+          <Button onClick={() => setConfirm(true)}>Restart WSL…</Button>
+        </div>
+      </Notice>
+      {confirm && (
+        <Dialog title="Restart WSL?" onClose={() => setConfirm(false)}>
+          <div className="space-y-4">
+            <p className="text-muted">
+              Every Linux system that is running stops, including open desktops and terminals. Unsaved work in them is lost. Your
+              systems and their files stay.
+            </p>
+            {error && <Notice tone="bad">{error}</Notice>}
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setConfirm(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                busy={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await api.restartWsl();
+                    setConfirm(false);
+                    onRestarted();
+                  } catch (e) {
+                    setError(String(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Restart WSL
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+export default function MySystems({
+  distros, responding, onRestarted, jobs, sessions, onDismissJob, onDismissSession, onGetLinux,
+}: {
+  distros: Distro[] | null;
+  responding: boolean;
+  onRestarted: () => void;
+  jobs: Job[];
+  sessions: Record<string, Session>;
+  onDismissJob: (id: number) => void;
+  onDismissSession: (distro: string) => void;
+  onGetLinux: () => void;
+}) {
+  // An install shows as its job until it is done; then the system's card takes over.
+  const installing = new Set(jobs.filter((j) => j.kind === "install" && j.state === "running").map((j) => j.distro));
+  const shown = (distros ?? []).filter((d) => !installing.has(d.name));
+  return (
+    <div className="space-y-6">
+      <header className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold">My systems</h1>
+          <p className="text-muted">The Linux systems on this PC.</p>
+        </div>
+        <Button variant="primary" icon={<Plus className="size-4" />} onClick={onGetLinux}>
+          Get Linux
+        </Button>
+      </header>
+
+      {!responding && <NotResponding onRestarted={onRestarted} />}
+
+      {jobs.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {jobs.map((j) => (
+            <JobCard key={j.id} job={j} onDismiss={() => onDismissJob(j.id)} />
+          ))}
+        </div>
+      )}
+
+      {distros === null ? (
+        <div className="flex items-center gap-2 text-muted">
+          <Loader2 className="size-4 animate-spin" /> Looking for your systems
+        </div>
+      ) : shown.length === 0 && jobs.length === 0 ? (
+        <Card className="flex flex-col items-center px-8 py-14 text-center">
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
+            <Sparkles className="size-7" />
+          </div>
+          <h2 className="font-display text-xl font-semibold">No Linux yet</h2>
+          <p className="mt-1 max-w-md text-muted">
+            Pick a Linux system and EasyWSL installs it for you. It runs next to Windows, in its own window. Nothing on Windows changes.
+          </p>
+          <Button variant="primary" className="mt-6" onClick={onGetLinux}>
+            Choose your first Linux
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {shown.map((d) => (
+            <DistroCard key={d.name} distro={d} session={sessions[d.name]} onSessionDismiss={() => onDismissSession(d.name)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

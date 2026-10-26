@@ -1,0 +1,116 @@
+diff -ruN a/src/allocator/GBM.cpp b/src/allocator/GBM.cpp
+--- a/src/allocator/GBM.cpp	2026-10-13 05:42:47.984390800 -0400
++++ b/src/allocator/GBM.cpp	2026-10-13 05:42:35.354678800 -0400
+@@ -218,6 +218,15 @@
+     }
+ 
+     if (!bo) {
++        // Some drivers only take the plainest request: Mesa's D3D12 driver behind a foreign
++        // DRM device refuses scanout, linear and modifier lists alike.
++        allocator->backend->log(AQ_LOG_WARNING, "GBM: Allocation failed, trying a plain rendering buffer");
++        bo = gbm_bo_create(allocator->gbmDevice, attrs.size.x, attrs.size.y, attrs.format, GBM_BO_USE_RENDERING);
++        if (bo)
++            modifier = gbm_bo_get_modifier(bo);
++    }
++
++    if (!bo) {
+         allocator->backend->log(AQ_LOG_ERROR, "GBM: Failed to allocate a GBM buffer: bo null");
+         return;
+     }
+diff -ruN a/src/backend/Backend.cpp b/src/backend/Backend.cpp
+--- a/src/backend/Backend.cpp	2026-10-13 05:42:47.987895200 -0400
++++ b/src/backend/Backend.cpp	2026-10-13 05:42:35.363774600 -0400
+@@ -153,7 +153,9 @@
+     // TODO: obviously change this when (if) we add different allocators.
+     for (auto const& b : implementations) {
+         if (b->drmFD() >= 0) {
+-            auto fd = reopenDRMNode(b->drmFD());
++            // The headless backend's device (see AQ_HEADLESS_DRM_DEVICE) may only allow buffer
++            // allocation on the node it named: vgem refuses it on its render node.
++            auto fd = reopenDRMNode(b->drmFD(), b->type() != AQ_BACKEND_HEADLESS);
+             if (fd < 0) {
+                 // this is critical, we cannot create an allocator properly
+                 log(AQ_LOG_CRITICAL, "Failed to create an allocator (reopenDRMNode failed)");
+diff -ruN a/src/backend/Headless.cpp b/src/backend/Headless.cpp
+--- a/src/backend/Headless.cpp	2026-10-13 05:42:47.987895200 -0400
++++ b/src/backend/Headless.cpp	2026-10-13 05:42:47.905132100 -0400
+@@ -3,6 +3,10 @@
+ #include <ctime>
+ #include <sys/timerfd.h>
+ #include <cstring>
++#include <unistd.h>
++#include <cstdio>
++#include <cstdlib>
++#include <xf86drm.h>
+ #include "Shared.hpp"
+ 
+ using namespace Aquamarine;
+@@ -25,6 +29,11 @@
+     }
+ }
+ 
++// A DRM device for the headless backend, named by AQ_HEADLESS_DRM_DEVICE. Without one the
++// headless backend has no DRM fd, so no allocator can be created and it cannot run alone.
++// Kept out of the class so that the library stays ABI-compatible with the stock one.
++static int headlessDRMFD = -1;
++
+ Aquamarine::CHeadlessOutput::CHeadlessOutput(const std::string& name_, Hyprutils::Memory::CWeakPointer<CHeadlessBackend> backend_) : backend(backend_) {
+     name = name_;
+ 
+@@ -91,6 +100,17 @@
+ }
+ 
+ bool Aquamarine::CHeadlessBackend::start() {
++    const char* device = getenv("AQ_HEADLESS_DRM_DEVICE");
++    if (device && *device && headlessDRMFD < 0) {
++        headlessDRMFD = open(device, O_RDWR | O_CLOEXEC);
++        if (headlessDRMFD < 0)
++            backend->log(AQ_LOG_ERROR, std::format("headless: failed to open {}: {}", device, strerror(errno)));
++        else {
++            // only buffers are wanted from it, never mode setting
++            drmDropMaster(headlessDRMFD);
++            backend->log(AQ_LOG_DEBUG, std::format("headless: using {} for buffer allocation", device));
++        }
++    }
+     return true;
+ }
+ 
+@@ -99,11 +119,11 @@
+ }
+ 
+ int Aquamarine::CHeadlessBackend::drmFD() {
+-    return -1;
++    return headlessDRMFD;
+ }
+ 
+ int Aquamarine::CHeadlessBackend::drmRenderNodeFD() {
+-    return -1;
++    return headlessDRMFD;
+ }
+ 
+ bool Aquamarine::CHeadlessBackend::dispatchEvents() {
+@@ -119,7 +139,9 @@
+ }
+ 
+ void Aquamarine::CHeadlessBackend::onReady() {
+-    ;
++    // with a device of its own, the headless backend is the display: give it an output
++    if (headlessDRMFD >= 0)
++        createOutput("");
+ }
+ 
+ std::vector<SDRMFormat> Aquamarine::CHeadlessBackend::getRenderFormats() {
+@@ -155,7 +177,12 @@
+ bool Aquamarine::CHeadlessBackend::createOutput(const std::string& name) {
+     auto output = SP<CHeadlessOutput>(new CHeadlessOutput(name.empty() ? std::format("HEADLESS-{}", ++outputIDCounter) : name, self.lock()));
+     outputs.emplace_back(output);
+-    output->modes.emplace_back(SP<SOutputMode>(new SOutputMode(Vector2D{1920, 1080}, 60, true)));
++    Vector2D    size = {1920, 1080};
++    int         w = 0, h = 0;
++    const char* mode = getenv("AQ_HEADLESS_MODE");
++    if (mode && sscanf(mode, "%dx%d", &w, &h) == 2 && w > 0 && h > 0)
++        size = {(double)w, (double)h};
++    output->modes.emplace_back(SP<SOutputMode>(new SOutputMode(size, 60000, true)));
+     output->swapchain = CSwapchain::create(backend->primaryAllocator, self.lock());
+     output->self      = output;
+     backend->events.newOutput.emit(SP<IOutput>(output));

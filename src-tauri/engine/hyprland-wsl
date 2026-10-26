@@ -1,0 +1,304 @@
+#!/bin/bash
+# hyprland-wsl: run Hyprland under WSL2 and show it in a window on the Windows desktop.
+#
+# WSL has no display device that Hyprland can drive, so this stacks:
+#   vgem (virtual DRM device, for buffer allocation)
+#   -> Hyprland on its headless backend (with the patched aquamarine from install.sh)
+#   -> wayvnc (shares Hyprland's screen) -> vncviewer (a normal WSLg window).
+#
+# Closing the viewer window (or Ctrl+C) shuts everything down.
+
+usage() {
+    cat <<'EOF'
+Usage: hyprland-wsl [WIDTHxHEIGHT] [--scale N] [--fps N] [--port N] [--gpu|--software] [--no-viewer]
+       hyprland-wsl set-mod SUPER|ALT
+       hyprland-wsl first-start
+
+  WIDTHxHEIGHT   size of the Hyprland screen (default 1920x1080)
+  --scale N      Hyprland's monitor scale, e.g. 2 for a 3840x2160 screen (default: from the config)
+  --port N       VNC port on 127.0.0.1 (default 5900)
+  --fps N        most frames per second sent to the viewer (default 60)
+  --gpu          render on the GPU, through Mesa's Direct3D 12 driver
+  --software     render on the CPU
+                 (default: the GPU if WSL exposes one and Mesa has the driver)
+  --no-viewer    do not open a viewer window; connect any VNC client yourself
+
+  first-start    run the distro's first-start setup if it still has one to do (creating the
+                 user, for example); does nothing otherwise. Needs a terminal.
+  set-mod        change the main modifier in the Hyprland config that install.sh wrote.
+                 SUPER needs a viewer that captures the Windows key (see the README);
+                 ALT works in every viewer.
+EOF
+}
+
+case ${1:-} in -h|--help) usage; exit 0 ;; esac
+
+# A setup that has to run once before the first session, installed by a distro-specific setup
+# such as tools/omarchy-wsl.sh. It removes itself when done.
+FIRST_START=/etc/hyprland-wsl/first-start
+if [ "${1:-}" = first-start ]; then
+    [ -x $FIRST_START ] || exit 0
+    [ "$(id -u)" = 0 ] || exec sudo -- "$0" "$@"
+    exec $FIRST_START
+fi
+
+[ "$(id -u)" = 0 ] || exec sudo -- "$0" "$@"
+
+PREFIX=${HYPRLAND_WSL_PREFIX:-/opt/hyprland-wsl}
+AQ_LIB=$PREFIX/aquamarine/lib
+CONF=/etc/hyprland-wsl.conf
+LOG=/tmp/hyprland-wsl
+
+RES=1920x1080
+FPS=60
+PORT=5900
+VIEWER=1
+SCALE=
+SETMOD=
+GPU=${HYPRLAND_WSL_GPU:-auto}
+while [ $# -gt 0 ]; do
+    case $1 in
+        --no-viewer) VIEWER=0 ;;
+        --gpu) GPU=1 ;;
+        --software) GPU=0 ;;
+        --fps) FPS=$2; shift ;;
+        --port) PORT=$2; shift ;;
+        --scale) SCALE=$2; shift ;;
+        set-mod) SETMOD=${2:-}; shift ;;
+        [0-9]*x[0-9]*) RES=$1 ;;
+        *) usage >&2; exit 2 ;;
+    esac
+    shift
+done
+
+die() { echo "hyprland-wsl: $*" >&2; exit 1; }
+
+[ -f $CONF ] || die "$CONF not found; run install.sh first"
+. $CONF
+if [ -z "${HYPR_USER:-}" ]; then
+    [ -x $FIRST_START ] && die "this distro is not set up yet; run 'hyprland-wsl first-start' in a terminal (the Windows launcher does it by itself)"
+    die "no user in $CONF; rerun install.sh"
+fi
+id "$HYPR_USER" >/dev/null 2>&1 || die "user '$HYPR_USER' from $CONF does not exist"
+
+if [ -n "$SETMOD" ]; then
+    case $SETMOD in SUPER|ALT) ;; *) die "set-mod takes SUPER or ALT" ;; esac
+    cfg=$(getent passwd "$HYPR_USER" | cut -d: -f6)/.config/hypr
+    if grep -qs '^local mainMod = "' "$cfg/hyprland.lua"; then
+        sed -i "s/^local mainMod = \"[A-Z]*\".*/local mainMod = \"$SETMOD\"/" "$cfg/hyprland.lua"
+    elif grep -qs '^\$mainMod = ' "$cfg/hyprland.conf"; then
+        sed -i "s/^\\\$mainMod = .*/\$mainMod = $SETMOD/" "$cfg/hyprland.conf"
+    else
+        die "no main modifier line found in $cfg; change it in your config by hand"
+    fi
+    echo "Main modifier is now $SETMOD. It applies from the next start of hyprland-wsl."
+    exit 0
+fi
+
+# The patched library has to match the aquamarine that Hyprland was built against.
+built=$(cat $PREFIX/aquamarine/VERSION 2>/dev/null)
+SYS_LIB=$(readlink -f "$(ldconfig -p | awk '/libaquamarine\.so\.[0-9]+ / { print $NF; exit }')")
+installed=${SYS_LIB##*/libaquamarine.so.}
+# An update that brought a new aquamarine normally rebuilt the copy from its hook already.
+if ! { [ "$built" = "$installed" ] && [ -f "$AQ_LIB/${SYS_LIB##*/}" ]; } && [ -x $PREFIX/build-aquamarine ]; then
+    echo "aquamarine $installed is installed, the patched copy is for '$built'; rebuilding it"
+    $PREFIX/build-aquamarine || true
+    built=$(cat $PREFIX/aquamarine/VERSION 2>/dev/null)
+fi
+[ "$built" = "$installed" ] && [ -f "$AQ_LIB/${SYS_LIB##*/}" ] ||
+    die "the patched aquamarine is for '$built' but '$installed' is installed; rerun install.sh"
+
+U=$HYPR_USER
+H=$(getent passwd "$U" | cut -d: -f6)
+R=/run/user/$(id -u "$U")
+pgrep -u "$U" -x Hyprland >/dev/null && die "Hyprland is already running for $U"
+
+# Where the user is set to keep a systemd session without logging in ("linger", which
+# install.sh and the Omarchy setup turn on), that session should be running before Hyprland
+# starts: it owns /run/user/<uid>, so that a later login as the user leaves the desktop's
+# sockets alone, and apps, power off and the like go through it. It can fail to start with
+# the instance, and then it is started here.
+if [ -e "/var/lib/systemd/linger/$U" ] && [ -d /run/systemd/system ]; then
+    systemctl is-active --quiet "user@$(id -u "$U").service" ||
+        systemctl start "user@$(id -u "$U").service" ||
+        echo "hyprland-wsl: the user's systemd session did not start; apps launched through it will not open" >&2
+fi
+
+# A DRM device for buffer allocation. Hyprland is pointed at its primary node, because
+# vgem refuses to allocate through its render node.
+modprobe vgem || die "could not load the vgem kernel module"
+card=
+for c in /sys/class/drm/card[0-9]*; do
+    case $(readlink -f "$c/device") in */vgem) card=$c ;; esac
+done
+[ -n "$card" ] || die "vgem DRM device not found"
+render=$(ls "$card/device/drm" | grep '^renderD' | head -n 1)
+DRM=/dev/dri/${card##*/}
+chmod 666 "$DRM" "/dev/dri/$render"
+
+mkdir -p $LOG "$R"
+chown "$U": "$R" && chmod 700 "$R"
+rm -rf "$R/hypr" "$R"/wayland-* "$R/wayvncctl"
+
+# Terminals want a UTF-8 locale; fall back to the one glibc always has.
+LANG=
+for f in /etc/locale.conf /etc/default/locale; do
+    [ -r $f ] && LANG=$(. $f; echo "${LANG:-}") && [ -n "$LANG" ] && break
+done
+case $LANG in *.[Uu][Tt][Ff]*8) ;; *) LANG=C.UTF-8 ;; esac
+
+# TigerVNC's viewer is "vncviewer" on Arch and "xtigervncviewer" on Debian and Ubuntu.
+VNCVIEWER=$(command -v xtigervncviewer || command -v vncviewer)
+
+wait_for() { for _ in $(seq 150); do "$@" && return 0; sleep 0.1; done; return 1; }
+
+cleanup() {
+    trap - EXIT INT TERM
+    pkill -u "$U" -x Hyprland; sleep 0.5
+    pkill -u "$U" -x wayvnc
+    [ -n "$VNCVIEWER" ] && pkill -u "$U" -x "${VNCVIEWER##*/}"
+    # Where libseat has its built-in backend, Hyprland leaves a helper process behind.
+    pkill -9 -u "$U" -x Hyprland
+    [ -n "${NS:-}" ] && kill "$NS" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
+
+# Hyprland runs in a private mount namespace, held open by a sleeping process, where:
+# - the patched aquamarine sits on top of the system one. LD_LIBRARY_PATH would not do:
+#   some distros give Hyprland a file capability, and the loader then ignores it.
+# - /tmp/.X11-unix is a fresh directory. WSLg mounts its own there without the sticky bit,
+#   which makes Xwayland setup fail.
+#   WSLg's sockets are mounted into the fresh directory, so that Hyprland's own
+#   Xwayland server sees those display numbers as taken. Otherwise it becomes :0,
+#   and the viewer, which reaches X through a socket name shared by all of WSL, would open
+#   its window inside the session instead of on the Windows desktop.
+mkdir -p /tmp/.X11-unix /run/hyprland-wsl/x11
+unshare -m --propagation private sh -c '
+    mount --bind "$1" "$2" || exit 1
+    mount --bind /tmp/.X11-unix /run/hyprland-wsl/x11 || exit 1
+    mount -t tmpfs -o mode=1777 tmpfs /tmp/.X11-unix || exit 1
+    for s in /run/hyprland-wsl/x11/X*; do
+        [ -S "$s" ] || continue
+        touch "/tmp/.X11-unix/${s##*/}" && mount --bind "$s" "/tmp/.X11-unix/${s##*/}"
+    done
+    touch /tmp/.X11-unix/.hyprland-wsl && exec sleep infinity
+' sh "$AQ_LIB/${SYS_LIB##*/}" "$SYS_LIB" &
+NS=$!
+wait_for nsenter -t $NS -m test -e /tmp/.X11-unix/.hyprland-wsl || die "could not set up the mount namespace"
+
+# Mesa's software renderer starts one thread per CPU core. Under WSL that costs far more
+# CPU than it gains (measured: over ten times the CPU for the same frames on 24 cores), so
+# the number is capped. HYPRLAND_WSL_THREADS overrides it.
+THREADS=${HYPRLAND_WSL_THREADS:-4}
+
+as() { nsenter -t $NS -m --wd="$H" sudo -u "$U" env -u WAYLAND_DISPLAY -u DISPLAY XDG_RUNTIME_DIR="$R" HOME="$H" LANG="$LANG" LP_NUM_THREADS="$THREADS" "$@"; }
+
+cd "$H" || exit 1
+
+# Hyprland's headless backend gets the vgem device for its buffers and one output of the
+# requested size. With --gpu, Mesa's Direct3D 12 driver does the drawing; the buffers are
+# then the GPU's own and vgem only lends its name.
+if [ "$GPU" = auto ]; then
+    GPU=0
+    for d in /usr/lib/*/dri /usr/lib/dri /usr/lib64/dri; do
+        [ -e /dev/dxg ] && [ -e "$d/d3d12_dri.so" ] && GPU=1
+    done
+    # With Mesa 25.2 (Linux Mint 22.3) screen capture through wlr-screencopy never completes on
+    # this driver, so the viewer stays blank. Mesa 26 is fine. Older than that: CPU unless asked.
+    mesa=$(ls /usr/lib/*/libgallium-*.so /usr/lib/libgallium-*.so /usr/lib64/libgallium-*.so 2>/dev/null | sed -n 's/.*libgallium-\([0-9]*\)\..*/\1/p' | sort -n | tail -n 1)
+    if [ "$GPU" = 1 ] && [ "${mesa:-0}" -lt 26 ]; then
+        GPU=0
+        echo "hyprland-wsl: Mesa ${mesa:-of unknown version} is older than 26; rendering on the CPU (--gpu to try the GPU anyway)" >&2
+    fi
+fi
+DRIVER=
+if [ "$GPU" = 1 ]; then
+    DRIVER=GALLIUM_DRIVER=d3d12
+    # Xwayland's own GPU drawing does not survive this setup (it exits at start), so Hyprland is
+    # given a wrapper that switches it off. X11 apps still draw with the GPU themselves.
+    # The option for that is "-glamor off" from Xwayland 23.1 on some builds and "-shm" on others.
+    XW=$(command -v Xwayland)
+    XWOPT=
+    if [ -n "$XW" ]; then
+        if "$XW" -help 2>&1 | grep -q -- '-glamor'; then XWOPT="-glamor off"
+        elif "$XW" -help 2>&1 | grep -q -- '-shm'; then XWOPT="-shm"; fi
+    fi
+    if [ -n "$XWOPT" ]; then
+        mkdir -p /run/hyprland-wsl/bin
+        printf '#!/bin/sh\nexec %s "$@" %s\n' "$XW" "$XWOPT" > /run/hyprland-wsl/bin/Xwayland
+        chmod 755 /run/hyprland-wsl/bin/Xwayland
+        DRIVER="$DRIVER PATH=/run/hyprland-wsl/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    fi
+fi
+start_hyprland() {
+    as AQ_HEADLESS_DRM_DEVICE="$DRM" AQ_HEADLESS_MODE="$RES" $DRIVER Hyprland > $LOG/hyprland.log 2>&1 &
+    HYPR=$!
+    for _ in $(seq 150); do
+        [ -S "$R/wayland-1" ] && return 0
+        kill -0 $HYPR 2>/dev/null || return 1
+        sleep 0.1
+    done
+    return 1
+}
+if ! start_hyprland && [ "$GPU" = 1 ]; then
+    echo "hyprland-wsl: Hyprland did not start on the GPU; trying the CPU (GPU attempt: $LOG/hyprland-gpu.log)" >&2
+    pkill -9 -u "$U" -x Hyprland
+    mv $LOG/hyprland.log $LOG/hyprland-gpu.log
+    rm -rf "$R/hypr" "$R"/wayland-*
+    GPU=0 DRIVER=
+    start_hyprland
+fi
+[ -S "$R/wayland-1" ] || die "Hyprland did not start, see $LOG/hyprland.log"
+
+sig=
+hc() { as HYPRLAND_INSTANCE_SIGNATURE="$sig" hyprctl "$@"; }
+if [ -n "$SCALE" ]; then
+    # Hyprland with a Lua config takes this through "eval", older versions through "keyword".
+    sig=$(ls "$R/hypr" | head -n 1)
+    wait_for test -S "$R/hypr/$sig/.socket.sock"
+    mon=
+    for _ in $(seq 50); do
+        mon=$(hc monitors | awk '$1 == "Monitor" { print $2; exit }')
+        [ -n "$mon" ] && break
+        sleep 0.1
+    done
+    if [ -f "$H/.config/hypr/hyprland.lua" ]; then
+        hc eval "hl.monitor({ output = \"$mon\", mode = \"$RES@60\", position = \"0x0\", scale = $SCALE })"
+    else
+        hc keyword monitor "$mon,$RES@60,0x0,$SCALE"
+    fi > $LOG/scale.log 2>&1
+    grep -q '^ok' $LOG/scale.log || echo "hyprland-wsl: could not set the scale, see $LOG/scale.log" >&2
+fi
+
+# Hyprland never names its socket wayland-0.
+# wayvnc gets the same driver as Hyprland. Older wayvnc versions capture into GPU buffers of
+# their own, and Hyprland can only fill those if both sides use the same driver.
+# The pointer is drawn into the picture by Hyprland. no-cursor-image.so keeps wayvnc from also
+# sending the viewer a pointer image, which Hyprland leaves transparent and which TigerVNC's
+# Windows viewer shows as a black square (src/no-cursor-image.c).
+PRELOAD=
+[ -f "$PREFIX/lib/no-cursor-image.so" ] && PRELOAD="LD_PRELOAD=$PREFIX/lib/no-cursor-image.so"
+as WAYLAND_DISPLAY=wayland-1 $DRIVER $PRELOAD HYPRLAND_WSL_POINTER_IMAGE=${HYPRLAND_WSL_POINTER_IMAGE:-0}     wayvnc --max-fps="$FPS" ${HYPRLAND_WSL_WAYVNC_OPTS:-} 127.0.0.1 "$PORT" > $LOG/wayvnc.log 2>&1 &
+wait_for test -S "$R/wayvncctl" || die "wayvnc did not start, see $LOG/wayvnc.log"
+# Say what is really drawing: the Direct3D 12 libraries are loaded only if that driver came up.
+HPID=$(pgrep -u "$U" -x Hyprland | head -n 1)
+if grep -q 'libd3d12' "/proc/$HPID/maps" 2>/dev/null; then
+    RENDER="the GPU"
+else
+    RENDER="the CPU"
+    [ "$GPU" = 1 ] && echo "hyprland-wsl: the Direct3D 12 driver did not start; rendering on the CPU instead" >&2
+fi
+echo "Hyprland is running at $RES, rendering on $RENDER (VNC on 127.0.0.1:$PORT)."
+
+if [ $VIEWER = 1 ]; then
+    # WSLg's X server shows this as an ordinary window on the Windows desktop.
+    [ -S /tmp/.X11-unix/X0 ] || die "WSLg display not found; use --no-viewer and connect a VNC client to 127.0.0.1:$PORT"
+    [ -n "$VNCVIEWER" ] || die "no TigerVNC viewer found; use --no-viewer"
+    # Hyprland draws the pointer into the picture and the server sends a fully transparent
+    # pointer image. Keep the viewer from drawing a substitute of its own on top.
+    NODOT=
+    "$VNCVIEWER" -h 2>&1 | grep -q AlwaysCursor && NODOT=-AlwaysCursor=0
+    sudo -u "$U" env DISPLAY=:0 HOME="$H" "$VNCVIEWER" -RemoteResize=0 $NODOT "127.0.0.1::$PORT" > $LOG/viewer.log 2>&1
+else
+    wait $HYPR
+fi

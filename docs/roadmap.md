@@ -1,0 +1,47 @@
+# Roadmap
+
+EasyWSL: Linux on Windows with as little friction and foreknowledge as possible, for people
+who have never used WSL, Linux or a command line. Name is a working title.
+
+## Phase 1: the app and WSL (in progress)
+
+- App shell (Tauri 2: Rust backend, React UI)
+- Setup check: Windows version, virtualization, WSL missing / old / features off / restart
+  needed, and installing WSL with one "Yes" prompt
+- My systems: installed distros with their state; open a terminal, open the files, open the
+  Hyprland desktop, stop, remove, add Hyprland later
+- Get Linux: a gallery of distros, described for newcomers; install with a name, an account
+  and a "Use the Hyprland desktop" checkbox; progress in plain steps, a log for bug reports
+- Desktop sessions through hyprland-wsl (bundled as the engine), on a free port
+- Settings: where new systems go, full screen or windowed desktop
+
+## Phase 2: Docker
+
+- "Turn on Docker": a small, hidden distro with the free Docker Engine; `docker` works from
+  PowerShell and from every distro, all talking to that engine
+- Containers page: start, stop, restart, logs, remove, "Open in browser" for web ports, disk
+  use and clean-up
+- One-click app gallery: ready-made apps (media server, cloud storage, home automation, ad
+  blocking, databases, AI chat), asking only what they need, showing their address when ready
+- Docker Desktop: detected when installed, its containers shown and managed too
+
+## Phase 3: help directory
+
+- A beginner guide per distro and general topics (what Linux is, files between Windows and
+  Linux, installing software, the Hyprland desktop), written in Markdown and shared with the
+  website (Cloudflare Pages)
+
+## Phase 4: assistant and tutorials
+
+- A friendly assistant window over the desktop viewer that walks through steps and follows
+  what happens in Hyprland (its event socket), so it advances when the step is done
+- Tutorials inside the distros
+
+## Phase 5: release
+
+- Signed installer, auto-update, winget
+- Final name
+
+## Phase 6: local AI
+
+- A small local model answering from the help directory (and Open WebUI from the app gallery)

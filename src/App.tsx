@@ -1,0 +1,111 @@
+import { useEffect, useState } from "react";
+import { Boxes, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon } from "lucide-react";
+import { api, type Readiness } from "./api";
+import { useDistros, useJobs, useSessions } from "./state";
+import Setup from "./pages/Setup";
+import MySystems from "./pages/MySystems";
+import GetLinux from "./pages/GetLinux";
+import Settings from "./pages/Settings";
+
+type Page = "systems" | "get" | "docker" | "help" | "settings";
+
+const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[] = [
+  { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
+  { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
+  { page: "docker", label: "Docker", icon: <Boxes className="size-4" />, soon: true },
+  { page: "help", label: "Help", icon: <HelpCircle className="size-4" />, soon: true },
+];
+
+function ComingSoon({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="max-w-xl space-y-2">
+      <h1 className="font-display text-2xl font-semibold">{title}</h1>
+      <p className="text-muted">{text}</p>
+    </div>
+  );
+}
+
+function Main({ readiness }: { readiness: Readiness }) {
+  const [page, setPage] = useState<Page>("systems");
+  const { distros, responding, refresh } = useDistros();
+  const { jobs, dismiss } = useJobs();
+  const { sessions, clear } = useSessions();
+  const working = jobs.filter((j) => j.state === "running").length;
+
+  return (
+    <div className="flex h-full">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-surface/60 px-3 py-4">
+        <div className="mb-6 flex items-center gap-2.5 px-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-accent font-display font-bold text-accent-ink">E</div>
+          <span className="font-display text-base font-semibold">EasyWSL</span>
+        </div>
+        <nav className="space-y-0.5">
+          {nav.map((n) => (
+            <button
+              key={n.page}
+              onClick={() => setPage(n.page)}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition
+                ${page === n.page ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}
+            >
+              {n.icon}
+              <span className="flex-1 text-left">{n.label}</span>
+              {n.page === "systems" && working > 0 && <Loader2 className="size-3.5 animate-spin text-accent" />}
+              {n.soon && <span className="text-[10px] uppercase tracking-wide text-muted">Soon</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto">
+          <button
+            onClick={() => setPage("settings")}
+            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition
+              ${page === "settings" ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}
+          >
+            <SettingsIcon className="size-4" /> Settings
+          </button>
+        </div>
+      </aside>
+      <main className="flex-1 overflow-y-auto px-8 py-7">
+        {page === "systems" && (
+          <MySystems
+            distros={distros}
+            responding={responding}
+            onRestarted={refresh}
+            jobs={jobs}
+            sessions={sessions}
+            onDismissJob={dismiss}
+            onDismissSession={clear}
+            onGetLinux={() => setPage("get")}
+          />
+        )}
+        {page === "get" && <GetLinux onStarted={() => setPage("systems")} />}
+        {page === "docker" && (
+          <ComingSoon
+            title="Docker"
+            text="Turn on Docker with one switch, see and manage your containers, and install ready-made apps in a click. Coming in the next version."
+          />
+        )}
+        {page === "help" && (
+          <ComingSoon title="Help" text="Guides for every system and for getting used to Linux, written for people coming from Windows. Coming soon." />
+        )}
+        {page === "settings" && <Settings readiness={readiness} />}
+      </main>
+    </div>
+  );
+}
+
+export default function App() {
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
+  useEffect(() => {
+    api.systemCheck().then(setReadiness);
+  }, []);
+
+  if (!readiness) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-muted">
+        <Loader2 className="size-4 animate-spin" /> Checking this PC
+      </div>
+    );
+  }
+  if (readiness.state !== "ready") return <Setup readiness={readiness} onChange={setReadiness} />;
+  return <Main readiness={readiness} />;
+}

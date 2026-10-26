@@ -1,0 +1,236 @@
+// The catalogue: Linux systems described for newcomers, and the short form that installs one.
+
+import { useEffect, useState } from "react";
+import { ChevronDown, Clock, ExternalLink, HardDrive, LayoutDashboard, Sparkles } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { api, inApp, type CatalogEntry, type InstallRequest } from "../api";
+import { Badge, Button, Card, Dialog, Field, Monogram, Notice, Toggle, inputClass } from "../components/ui";
+
+function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onClose: () => void; onStarted: () => void }) {
+  const omarchy = entry.source.kind === "omarchy";
+  const [name, setName] = useState("");
+  const [user, setUser] = useState("");
+  const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
+  const [hyprland, setHyprland] = useState(entry.hyprland === "included" || entry.recommended);
+  const [windowsKey, setWindowsKey] = useState(true);
+  const [thirdParty, setThirdParty] = useState(false);
+  const [setDefault, setSetDefault] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const [location, setLocation] = useState("");
+  const [locationTouched, setLocationTouched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.suggestName(entry.id).then(setName);
+    api.suggestUser().then(setUser);
+  }, [entry.id]);
+  useEffect(() => {
+    if (!locationTouched && name) api.defaultLocation(name).then(setLocation);
+  }, [name, locationTouched]);
+
+  const mismatch = !omarchy && again.length > 0 && password !== again;
+  const request = (): InstallRequest => ({
+    catalogId: entry.id,
+    name,
+    user: omarchy ? null : user,
+    password: omarchy ? null : password,
+    hyprland: omarchy || hyprland,
+    mainKey: windowsKey ? "SUPER" : "ALT",
+    allowThirdParty: thirdParty,
+    location: locationTouched ? location : null,
+    setDefault,
+  });
+
+  async function install() {
+    if (!omarchy && password !== again) {
+      setError("The two passwords are not the same.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.startInstall(request());
+      onStarted();
+    } catch (e) {
+      setError(String(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog title={`Install ${entry.title}`} onClose={onClose} wide>
+      <form
+        className="space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          install();
+        }}
+      >
+        <Field label="Name" hint="How this system is called on your PC. You can have several of the same kind.">
+          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} spellCheck={false} required />
+        </Field>
+
+        {omarchy ? (
+          <Notice icon={<Sparkles className="size-4 text-accent" />}>
+            Omarchy asks for your account, keyboard and time zone itself, the first time you open it, just like a new PC.
+          </Notice>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="User name" hint="Lower-case letters and digits.">
+              <input className={inputClass} value={user} onChange={(e) => setUser(e.target.value)} spellCheck={false} required />
+            </Field>
+            <Field label="Password" hint="Linux asks for it when you install software.">
+              <input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </Field>
+            <Field label="Password again" error={mismatch ? "Not the same as above." : null}>
+              <input className={inputClass} type="password" value={again} onChange={(e) => setAgain(e.target.value)} required />
+            </Field>
+          </div>
+        )}
+
+        {entry.hyprland !== "no" && (
+          <div className="space-y-3 rounded-xl border border-line p-4">
+            <Toggle
+              checked={omarchy || hyprland}
+              disabled={omarchy}
+              onChange={setHyprland}
+              label={
+                <span className="inline-flex items-center gap-2">
+                  <LayoutDashboard className="size-4 text-accent" /> Use the Hyprland desktop
+                </span>
+              }
+              description={
+                entry.hyprlandNote ??
+                "A modern Linux desktop with windows that arrange themselves in tiles, shown full screen in its own window. You can also add it later."
+              }
+            />
+            {(omarchy || hyprland) && !omarchy && (
+              <Toggle
+                checked={windowsKey}
+                onChange={setWindowsKey}
+                label="Use the Windows key for the desktop's shortcuts"
+                description="Recommended. Off: the Alt key instead."
+              />
+            )}
+            {hyprland && entry.thirdParty && (
+              <Toggle checked={thirdParty} onChange={setThirdParty} label="Allow the community package sources" description={entry.thirdParty} />
+            )}
+          </div>
+        )}
+
+        <div>
+          <button type="button" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onClick={() => setAdvanced(!advanced)}>
+            <ChevronDown className={`size-4 transition ${advanced ? "rotate-180" : ""}`} /> More options
+          </button>
+          {advanced && (
+            <div className="mt-3 space-y-4 animate-in">
+              <Field label="Folder for its disk" hint="Needs a few GB free. A fast drive (SSD) makes Linux much quicker.">
+                <input
+                  className={inputClass}
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setLocationTouched(true);
+                  }}
+                  spellCheck={false}
+                />
+              </Field>
+              <Toggle
+                checked={setDefault}
+                onChange={setSetDefault}
+                label="Make it the default system"
+                description="The one that opens when you type wsl in a terminal."
+              />
+            </div>
+          )}
+        </div>
+
+        {error && <Notice tone="bad">{error}</Notice>}
+
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+          <span className="text-xs text-muted">
+            About {entry.minutes} minutes, {entry.sizeGb} GB.
+          </span>
+          <div className="flex gap-2">
+            <Button type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" busy={busy} disabled={mismatch || (hyprland && !!entry.thirdParty && !thirdParty)}>
+              Install
+            </Button>
+          </div>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+export default function GetLinux({ onStarted }: { onStarted: () => void }) {
+  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
+  const [chosen, setChosen] = useState<CatalogEntry | null>(null);
+  useEffect(() => {
+    api.catalog().then(setCatalog);
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="font-display text-2xl font-semibold">Get Linux</h1>
+        <p className="text-muted">
+          Each one is a complete Linux system that runs next to Windows. Not sure? <b className="text-ink">Ubuntu</b> is the most common
+          choice; <b className="text-ink">Arch Linux</b> is the best with the Hyprland desktop.
+        </p>
+      </header>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {catalog.map((e) => (
+          <Card key={e.id} className="flex flex-col p-5 transition hover:border-accent/50">
+            <div className="flex items-start gap-4">
+              <Monogram title={e.title} accent={e.accent} size="lg" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-display text-base font-semibold">{e.title}</h3>
+                  {e.recommended && <Badge tone="accent">Recommended</Badge>}
+                </div>
+                <p className="text-sm font-medium">{e.tagline}</p>
+              </div>
+            </div>
+            <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">{e.description}</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {e.hyprland === "included" && <Badge tone="accent">Hyprland desktop included</Badge>}
+              {e.hyprland === "optional" && <Badge tone="accent">Hyprland desktop available</Badge>}
+              <Badge>
+                <Clock className="size-3" /> {e.minutes} min
+              </Badge>
+              <Badge>
+                <HardDrive className="size-3" /> {e.sizeGb} GB
+              </Badge>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
+                onClick={() => (inApp ? openUrl(e.website) : window.open(e.website))}
+              >
+                Website <ExternalLink className="size-3" />
+              </button>
+              <Button variant="primary" onClick={() => setChosen(e)}>
+                Install
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {chosen && (
+        <InstallDialog
+          entry={chosen}
+          onClose={() => setChosen(null)}
+          onStarted={() => {
+            setChosen(null);
+            onStarted();
+          }}
+        />
+      )}
+    </div>
+  );
+}

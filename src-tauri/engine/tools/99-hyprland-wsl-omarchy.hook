@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Keeping Omarchy's settings for WSL...
+When = PostTransaction
+Exec = /opt/hyprland-wsl/omarchy-wsl-system --quiet
