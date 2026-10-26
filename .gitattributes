@@ -1,4 +1,6 @@
-# The engine runs inside Linux: its scripts must keep LF line endings on every checkout.
-src-tauri/engine/** text eol=lf
-src-tauri/engine/**/*.patch -text
-*.sh text eol=lf
+# LF everywhere; the engine runs inside Linux and must never get CRLF.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.patch -text
