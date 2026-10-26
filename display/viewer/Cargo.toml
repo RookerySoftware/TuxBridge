@@ -1,0 +1,13 @@
+[package]
+name = "easywsl-viewer"
+version = "0.1.0"
+edition = "2024"
+description = "A window on Windows showing a Linux desktop from the EasyWSL agent"
+
+[dependencies]
+easywsl-protocol = { path = "../protocol" }
+winit = "0.30"
+softbuffer = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_LibraryLoader", "Win32_System_Threading"] }

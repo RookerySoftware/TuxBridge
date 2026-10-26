@@ -1,0 +1,12 @@
+[package]
+name = "easywsl-agent"
+version = "0.1.0"
+edition = "2024"
+description = "Runs inside Linux: hands the desktop to the EasyWSL viewer and its input to the desktop"
+
+[dependencies]
+easywsl-protocol = { path = "../protocol" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", features = ["blocking-api"] }
+pipewire = "0.8"

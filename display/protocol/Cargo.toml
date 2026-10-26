@@ -1,0 +1,8 @@
+[package]
+name = "easywsl-protocol"
+version = "0.1.0"
+edition = "2024"
+description = "Messages between the EasyWSL display agent (Linux) and viewer (Windows)"
+
+[dependencies]
+lz4_flex = "0.11"

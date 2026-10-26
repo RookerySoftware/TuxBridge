@@ -1,0 +1,78 @@
+//! Sending frames to the viewer. Capture hands over each new frame; a thread of its own compares
+//! it with the one sent before and writes only the changed tiles. When the viewer is slower than
+//! the desktop, frames in between are skipped rather than queued, so it always gets the newest.
+
+use std::io::Write;
+use std::sync::{Arc, Condvar, Mutex};
+
+use easywsl_protocol::{Event, VERSION, changed_tiles};
+
+/// A frame as captured: BGRA (or BGRx) rows of `stride` bytes.
+pub struct Frame {
+    pub width: u32,
+    pub height: u32,
+    pub stride: usize,
+    pub pixels: Vec<u8>,
+}
+
+#[derive(Default)]
+struct Slot {
+    newest: Option<Frame>,
+    /// Send everything with the next frame (the viewer asked, or the size changed).
+    full: bool,
+}
+
+#[derive(Clone)]
+pub struct Sender(Arc<(Mutex<Slot>, Condvar)>);
+
+impl Sender {
+    /// Starts the writer thread on stdout.
+    pub fn start() -> Sender {
+        let sender = Sender(Arc::new((Mutex::new(Slot { full: true, ..Default::default() }), Condvar::new())));
+        let shared = sender.0.clone();
+        std::thread::spawn(move || write_loop(shared));
+        sender
+    }
+
+    /// Hands over a new frame, replacing one not sent yet.
+    pub fn frame(&self, frame: Frame) {
+        let (lock, cv) = &*self.0;
+        lock.lock().unwrap().newest = Some(frame);
+        cv.notify_one();
+    }
+
+    /// Makes the next frame a complete one.
+    pub fn refresh(&self) {
+        self.0.0.lock().unwrap().full = true;
+    }
+}
+
+fn write_loop(shared: Arc<(Mutex<Slot>, Condvar)>) {
+    let stdout = std::io::stdout();
+    let mut out = std::io::BufWriter::with_capacity(1 << 20, stdout.lock());
+    let mut previous: Option<Frame> = None;
+    loop {
+        let (frame, full) = {
+            let (lock, cv) = &*shared;
+            let mut slot = lock.lock().unwrap();
+            while slot.newest.is_none() {
+                slot = cv.wait(slot).unwrap();
+            }
+            let full = std::mem::take(&mut slot.full);
+            (slot.newest.take().unwrap(), full)
+        };
+        let resized = previous.as_ref().is_none_or(|p| p.width != frame.width || p.height != frame.height || p.stride != frame.stride);
+        if resized {
+            if (Event::Hello { version: VERSION, width: frame.width, height: frame.height }).write(&mut out).is_err() {
+                return;
+            }
+        }
+        let base = if full || resized { None } else { previous.as_ref().map(|p| p.pixels.as_slice()) };
+        let tiles = changed_tiles(&frame.pixels, base, frame.width, frame.height, frame.stride);
+        if !tiles.is_empty() && ((Event::Frame { tiles }).write(&mut out).is_err() || out.flush().is_err()) {
+            // The viewer is gone.
+            std::process::exit(0);
+        }
+        previous = Some(frame);
+    }
+}
