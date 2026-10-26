@@ -119,12 +119,19 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
 
 export function Dialog({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The newest onClose, without re-running the effects below: callers pass a new function on
+  // every render, and the app re-renders every few seconds (its system list refreshes).
+  const close = useRef(onClose);
+  close.current = onClose;
+  // Focus the first field once, when the dialog opens; never again while the user types.
   useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", key);
     (ref.current?.querySelector<HTMLElement>("input") ?? ref.current?.querySelector<HTMLElement>("button"))?.focus();
+  }, []);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && close.current();
+    window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [onClose]);
+  }, []);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6 animate-in" onMouseDown={onClose}>
       <div
