@@ -47,8 +47,9 @@ and draws what it sends. wsl.exe carries both directions over WSL's own Hyper-V 
 
 ## Not working yet: KDE Plasma (Wayland-only)
 
-KDE Plasma 6.8 (Arch, CachyOS) and current GNOME (Ubuntu 26.04) no longer have an X11
-session, so they cannot run on Xvnc. Tried on 2026-10-26 on CachyOS with Plasma 6.8.1:
+KDE Plasma 6.8 (Arch, CachyOS) no longer has an X11 session, so it cannot run on Xvnc, and its
+own remote paths crashed. Tried on 2026-10-26 on CachyOS with Plasma 6.8.1 (before GNOME's
+headless route above existed; KDE has no equivalent of GNOME's ScreenCast interface that worked):
 
 | Approach | Result |
 | --- | --- |
@@ -59,8 +60,7 @@ session, so they cannot run on Xvnc. Tried on 2026-10-26 on CachyOS with Plasma 
 | KWin nested in headless cage (pixman) + wayvnc | cage and wayvnc work at 1600x900; KWin exits at once without output. |
 | KWin nested in hyprland-wsl's headless Hyprland + wayvnc | With GPU rendering KWin aborts (`invalid arguments for wl_surface.attach`); with `KWIN_COMPOSE=Q` it and plasmashell run but no window appears. |
 
-Not tried yet: GNOME's headless mode (`gnome-shell --headless` with gnome-remote-desktop),
-which is designed for exactly this; Plasma under a nested compositor that offers dmabuf with a
+Not tried yet for KDE: Plasma under a nested compositor that offers dmabuf with a
 real GPU path; following KWin's crash with a debugger.
 
-Until one of these works, CachyOS offers Hyprland or a terminal, and Ubuntu gets Xfce.
+Until one of these works, CachyOS offers Hyprland or a terminal.
