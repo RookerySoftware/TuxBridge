@@ -55,6 +55,7 @@ fn main() {
                         }
                         p.3 += 1;
                     }
+                    Event::Cursor { width, height, .. } => println!("pointer shape {width}x{height}"),
                     Event::Ended { .. } => break,
                 }
             }

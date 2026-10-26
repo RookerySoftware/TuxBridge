@@ -18,6 +18,8 @@ pub struct Frame {
 #[derive(Default)]
 struct Slot {
     newest: Option<Frame>,
+    /// The pointer's newest shape (an Event::Cursor), sent before any frame.
+    cursor: Option<Event>,
     /// Send everything with the next frame (the viewer asked, or the size changed).
     full: bool,
 }
@@ -41,6 +43,13 @@ impl Sender {
         cv.notify_one();
     }
 
+    /// Hands over a new pointer shape.
+    pub fn cursor(&self, cursor: Event) {
+        let (lock, cv) = &*self.0;
+        lock.lock().unwrap().cursor = Some(cursor);
+        cv.notify_one();
+    }
+
     /// Makes the next frame a complete one.
     pub fn refresh(&self) {
         self.0.0.lock().unwrap().full = true;
@@ -52,15 +61,21 @@ fn write_loop(shared: Arc<(Mutex<Slot>, Condvar)>) {
     let mut out = std::io::BufWriter::with_capacity(1 << 20, stdout.lock());
     let mut previous: Option<Frame> = None;
     loop {
-        let (frame, full) = {
+        let (frame, cursor, full) = {
             let (lock, cv) = &*shared;
             let mut slot = lock.lock().unwrap();
-            while slot.newest.is_none() {
+            while slot.newest.is_none() && slot.cursor.is_none() {
                 slot = cv.wait(slot).unwrap();
             }
-            let full = std::mem::take(&mut slot.full);
-            (slot.newest.take().unwrap(), full)
+            let full = slot.newest.is_some() && std::mem::take(&mut slot.full);
+            (slot.newest.take(), slot.cursor.take(), full)
         };
+        if let Some(cursor) = cursor {
+            if cursor.write(&mut out).is_err() || out.flush().is_err() {
+                std::process::exit(0);
+            }
+        }
+        let Some(frame) = frame else { continue };
         let resized = previous.as_ref().is_none_or(|p| p.width != frame.width || p.height != frame.height || p.stride != frame.stride);
         if resized {
             if (Event::Hello { version: VERSION, width: frame.width, height: frame.height }).write(&mut out).is_err() {

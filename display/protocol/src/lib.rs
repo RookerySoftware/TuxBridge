@@ -12,7 +12,7 @@ use std::io::{self, Read, Write};
 pub const TILE: u32 = 64;
 
 /// Bumped when a message changes shape; the viewer refuses an agent with another version.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rect {
@@ -32,6 +32,9 @@ pub enum Event {
     Frame { tiles: Vec<(Rect, Vec<u8>)> },
     /// The desktop session ended (logged out, powered off).
     Ended { reason: String },
+    /// The pointer's shape changed. The viewer shows it as its own pointer, so moving the mouse
+    /// needs no round trip. RGBA, `width` x `height`; zero size hides the pointer.
+    Cursor { hot_x: u32, hot_y: u32, width: u32, height: u32, rgba: Vec<u8> },
 }
 
 /// Viewer to agent. Keys are Linux evdev key codes (KEY_A = 30, ...); buttons are evdev button
@@ -53,6 +56,7 @@ mod kind {
     pub const HELLO: u8 = 1;
     pub const FRAME: u8 = 2;
     pub const ENDED: u8 = 3;
+    pub const CURSOR: u8 = 4;
     pub const KEY: u8 = 16;
     pub const POINTER_MOVE: u8 = 17;
     pub const BUTTON: u8 = 18;
@@ -155,6 +159,14 @@ impl Event {
                 b.bytes(reason.as_bytes());
                 kind::ENDED
             }
+            Event::Cursor { hot_x, hot_y, width, height, rgba } => {
+                b.u32(*hot_x);
+                b.u32(*hot_y);
+                b.u32(*width);
+                b.u32(*height);
+                b.bytes(rgba);
+                kind::CURSOR
+            }
         };
         write_message(w, kind, &b.0)
     }
@@ -174,6 +186,7 @@ impl Event {
                 Event::Frame { tiles }
             }
             kind::ENDED => Event::Ended { reason: String::from_utf8_lossy(&c.bytes()?).into_owned() },
+            kind::CURSOR => Event::Cursor { hot_x: c.u32()?, hot_y: c.u32()?, width: c.u32()?, height: c.u32()?, rgba: c.bytes()? },
             other => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("unknown event {other}"))),
         }))
     }
@@ -286,6 +299,7 @@ mod tests {
             Event::Hello { version: VERSION, width: 1600, height: 900 },
             Event::Frame { tiles: vec![(Rect { x: 0, y: 64, width: 10, height: 2 }, vec![1, 2, 3])] },
             Event::Ended { reason: "logged out".into() },
+            Event::Cursor { hot_x: 1, hot_y: 2, width: 1, height: 1, rgba: vec![1, 2, 3, 4] },
         ];
         let mut buf = Vec::new();
         for e in &events {

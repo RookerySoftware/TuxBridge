@@ -25,7 +25,7 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{Fullscreen, Window, WindowId};
+use winit::window::{CustomCursor, Fullscreen, Window, WindowId};
 
 /// The desktop's picture as last received: BGRA, the protocol's own order, which is also what
 /// the window wants (0RGB in a little-endian u32).
@@ -40,6 +40,8 @@ enum Message {
     Frame,
     /// The agent ended (the desktop session closed); the text says why, when it is known.
     Ended(String),
+    /// The desktop's pointer took a new shape (RGBA), or was hidden (no pixels).
+    Cursor { hot_x: u16, hot_y: u16, width: u16, height: u16, rgba: Vec<u8> },
 }
 
 /// Writes input to the agent; shared with the keyboard hook's thread.
@@ -224,6 +226,19 @@ impl ApplicationHandler<Message> for App {
                 self.ended = Some(reason);
                 event_loop.exit();
             }
+            // The desktop's pointer becomes this window's own Windows pointer: it moves with the
+            // mouse at once, with no round trip to Linux.
+            Message::Cursor { hot_x, hot_y, width, height, rgba } => {
+                let Some(window) = &self.window else { return };
+                if width == 0 {
+                    window.set_cursor_visible(false);
+                    return;
+                }
+                if let Ok(source) = CustomCursor::from_rgba(rgba, width, height, hot_x, hot_y) {
+                    window.set_cursor(event_loop.create_custom_cursor(source));
+                    window.set_cursor_visible(true);
+                }
+            }
         }
     }
 
@@ -297,6 +312,15 @@ fn read_events(stdout: std::process::ChildStdout, desktop: Arc<Mutex<Desktop>>, 
                 }
                 drop(d);
                 let _ = proxy.send_event(Message::Frame);
+            }
+            Ok(Some(Event::Cursor { hot_x, hot_y, width, height, rgba })) => {
+                let _ = proxy.send_event(Message::Cursor {
+                    hot_x: hot_x as u16,
+                    hot_y: hot_y as u16,
+                    width: width as u16,
+                    height: height as u16,
+                    rgba,
+                });
             }
             Ok(Some(Event::Ended { reason })) => {
                 let _ = proxy.send_event(Message::Ended(reason));
