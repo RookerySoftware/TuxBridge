@@ -53,7 +53,8 @@ async fn probe(app: AppHandle, name: String) {
         sed -n 's/^HYPR_USER=/HYPR_USER=/p' /etc/hyprland-wsl.conf 2>/dev/null
         [ -e /etc/hyprland-wsl/first-start ] && echo FIRST_START
         [ -f /etc/easywsl/desktop ] && echo "DESKTOP=$(cat /etc/easywsl/desktop)"
-        [ -f /etc/easywsl/desktop-user ] && echo "DESKTOP_USER=$(cat /etc/easywsl/desktop-user)"; true"#;
+        [ -f /etc/easywsl/desktop-user ] && echo "DESKTOP_USER=$(cat /etc/easywsl/desktop-user)"
+        awk -F: '$3 >= 1000 && $3 < 60000 && $6 ~ /^\/home\// { print "FIRST_USER=" $1; exit }' /etc/passwd; true"#;
     let Ok(out) = wsl::output(["-d", &name, "-e", "sh", "-c", script]).await else { return };
     let _ = std::fs::create_dir_all(paths::logs_dir());
     let _ = std::fs::write(paths::logs_dir().join(format!("probe-{name}.log")), format!("exit {}\n{}", out.code, out.text));
@@ -77,12 +78,14 @@ async fn probe(app: AppHandle, name: String) {
     let hypr_user = lines.iter().find_map(|l| l.strip_prefix("HYPR_USER=")).map(String::from).filter(|u| !u.is_empty());
     let first_start = lines.contains(&"FIRST_START");
     let desktop_user = lines.iter().find_map(|l| l.strip_prefix("DESKTOP_USER=")).map(String::from).filter(|u| !u.is_empty());
+    // For a system that logs in as root and has no record of whose desktop it is.
+    let first_user = lines.iter().find_map(|l| l.strip_prefix("FIRST_USER=")).map(String::from).filter(|u| !u.is_empty());
     let own_desktop = lines.iter().find_map(|l| l.strip_prefix("DESKTOP=")).map(String::from).filter(|d| !d.is_empty());
     app.state::<Store>().update_distro(&name, |d| {
         d.probed = true;
         d.catalog_id = catalog_id.map(String::from);
         d.hyprland = hyprland;
-        d.user = hypr_user.clone().or(desktop_user.clone()).or(default_user.clone());
+        d.user = hypr_user.clone().or(desktop_user.clone()).or(default_user.clone()).or(first_user.clone());
         d.first_start_pending = first_start;
         d.desktop = own_desktop.clone();
     });

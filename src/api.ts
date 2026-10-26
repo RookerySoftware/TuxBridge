@@ -86,7 +86,6 @@ export interface Job {
 
 export interface Session {
   distro: string;
-  port: number;
   state: "starting" | "running" | "ended" | "failed";
   message: string | null;
 }
@@ -236,8 +235,8 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
     case "stop_distro": mockState.distros.forEach((d) => d.name === a.name && (d.running = false)); emit("distros-changed", null); return null;
     case "remove_distro": mockState.distros = mockState.distros.filter((d) => d.name !== a.name); emit("distros-changed", null); return null;
     case "open_desktop":
-      emit("session", { distro: a.name, port: 5900, state: "starting", message: "Starting the desktop" });
-      setTimeout(() => emit("session", { distro: a.name, port: 5900, state: "running", message: null }), 1500);
+      emit("session", { distro: a.name, state: "starting", message: "Starting the desktop" });
+      setTimeout(() => emit("session", { distro: a.name, state: "running", message: null }), 1500);
       return null;
     case "list_sessions": return [];
     case "get_settings": return mockState.settings;

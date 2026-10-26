@@ -1,6 +1,7 @@
 #!/bin/bash
-# Installs a distro's own desktop (Cinnamon, KDE Plasma, Xfce) and TigerVNC's X server, which
-# desktop-start.sh runs it on. Run as root inside the distro:
+# Installs a distro's own desktop (Cinnamon, KDE Plasma, Xfce, GNOME) and what EasyWSL's display
+# agent needs: a virtual X server (Xvfb) for the X11 desktops, which desktop-start.sh runs them
+# on, and the libraries the agent links (PipeWire's and xkbcommon). Run as root inside the distro:
 #
 #   desktop-setup.sh DESKTOP USER        DESKTOP: cinnamon | kde | xfce | gnome
 #
@@ -27,8 +28,8 @@ if command -v pacman > /dev/null; then
         pkgs+=(cachyos-kde-settings)
     fi
     step "Installing the desktop"
-    pacman -Syu --noconfirm --needed "${pkgs[@]}" tigervnc xorg-xauth dbus noto-fonts ttf-dejavu \
-        pipewire-pulse
+    pacman -Syu --noconfirm --needed "${pkgs[@]}" xorg-server-xvfb xorg-xauth dbus noto-fonts ttf-dejavu \
+        pipewire pipewire-pulse libxkbcommon
 else
     export DEBIAN_FRONTEND=noninteractive
     . /etc/os-release
@@ -52,7 +53,7 @@ else
             esac
             ;;
         kde) pkgs=(kde-plasma-desktop konsole dolphin) ;;
-        # GNOME runs headless and shows in EasyWSL's own viewer (gnome-start.sh), not on Xvnc.
+        # GNOME runs headless, with no X server of its own (gnome-start.sh).
         gnome)
             pkgs=(gnome-shell gnome-session gnome-terminal nautilus gnome-control-center gnome-text-editor
                   pipewire wireplumber pipewire-pulse dbus-user-session xwayland libglib2.0-bin util-linux)
@@ -66,10 +67,14 @@ else
     esac
     step "Installing the desktop"
     apt-get update
-    # GNOME needs no X server of its own; the others run on TigerVNC's.
-    vnc=(tigervnc-standalone-server dbus-x11 xauth)
-    [ "$DESKTOP" = gnome ] && vnc=()
-    apt-get install -y --no-install-recommends "${pkgs[@]}" "${vnc[@]}" \
+    # GNOME needs no X server of its own; the others run on Xvfb.
+    x=(xvfb dbus-x11 xauth)
+    [ "$DESKTOP" = gnome ] && x=()
+    # The agent's libraries; PipeWire's is named after the t64 transition in newer releases.
+    for p in libpipewire-0.3-0t64 libpipewire-0.3-0; do
+        apt-cache show "$p" > /dev/null 2>&1 && { x+=("$p"); break; }
+    done
+    apt-get install -y --no-install-recommends "${pkgs[@]}" "${x[@]}" libxkbcommon0 \
         fonts-dejavu-core fonts-noto-core adwaita-icon-theme pulseaudio-utils at-spi2-core
 fi
 

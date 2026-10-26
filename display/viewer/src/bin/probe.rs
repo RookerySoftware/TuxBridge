@@ -27,6 +27,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let sep = args.iter().position(|a| a == "--").expect("probe OUT.bmp SCRIPT -- COMMAND");
     let (out, script) = (args[1].clone(), args[2].clone());
+    let launched = std::time::Instant::now();
     let mut child = Command::new(&args[sep + 1])
         .args(&args[sep + 2..])
         .stdin(Stdio::piped())
@@ -42,7 +43,15 @@ fn main() {
         let received = received.clone();
         std::thread::spawn(move || {
             let mut r = BufReader::new(stdout);
-            while let Ok(Some(event)) = Event::read(&mut r) {
+            loop {
+                let event = match Event::read(&mut r) {
+                    Ok(Some(event)) => event,
+                    Ok(None) => break,
+                    Err(e) => {
+                        eprintln!("probe: {e}");
+                        break;
+                    }
+                };
                 let mut p = picture.lock().unwrap();
                 match event {
                     Event::Hello { width, height, .. } => *p = (width, height, vec![0; (width * height * 4) as usize], 0),
@@ -68,6 +77,7 @@ fn main() {
         std::thread::sleep(Duration::from_millis(100));
     }
     let start = std::time::Instant::now();
+    println!("first picture after {:?}", launched.elapsed());
     let mut send = |i: Input| {
         i.write(&mut input).unwrap();
         input.flush().unwrap();

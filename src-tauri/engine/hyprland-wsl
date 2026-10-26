@@ -11,6 +11,7 @@
 usage() {
     cat <<'EOF'
 Usage: hyprland-wsl [WIDTHxHEIGHT] [--scale N] [--fps N] [--port N] [--gpu|--software] [--no-viewer]
+       hyprland-wsl [WIDTHxHEIGHT] [--scale N] [--gpu|--software] --agent PATH
        hyprland-wsl set-mod SUPER|ALT
        hyprland-wsl first-start
 
@@ -22,6 +23,9 @@ Usage: hyprland-wsl [WIDTHxHEIGHT] [--scale N] [--fps N] [--port N] [--gpu|--sof
   --software     render on the CPU
                  (default: the GPU if WSL exposes one and Mesa has the driver)
   --no-viewer    do not open a viewer window; connect any VNC client yourself
+  --agent PATH   no VNC: hand the session to a display agent (EasyWSL's easywsl-agent), which
+                 talks to its viewer over this command's stdin and stdout. The session ends
+                 when the agent does.
 
   first-start    run the distro's first-start setup if it still has one to do (creating the
                  user, for example); does nothing otherwise. Needs a terminal.
@@ -53,6 +57,7 @@ RES=1920x1080
 FPS=60
 PORT=5900
 VIEWER=1
+AGENT=
 SCALE=
 SETMOD=
 GPU=${HYPRLAND_WSL_GPU:-auto}
@@ -63,6 +68,7 @@ while [ $# -gt 0 ]; do
         --software) GPU=0 ;;
         --fps) FPS=$2; shift ;;
         --port) PORT=$2; shift ;;
+        --agent) AGENT=$2; shift ;;
         --scale) SCALE=$2; shift ;;
         set-mod) SETMOD=${2:-}; shift ;;
         [0-9]*x[0-9]*) RES=$1 ;;
@@ -72,6 +78,14 @@ while [ $# -gt 0 ]; do
 done
 
 die() { echo "hyprland-wsl: $*" >&2; exit 1; }
+
+# With an agent, stdin and stdout belong to it (kept as fd 4 and 3); everything the launcher
+# says goes to stderr, and nothing else started here gets the two.
+if [ -n "$AGENT" ]; then
+    [ -x "$AGENT" ] || die "no agent at $AGENT"
+    exec 3>&1 4<&0 >&2 < /dev/null
+    VIEWER=0
+fi
 
 [ -f $CONF ] || die "$CONF not found; run install.sh first"
 . $CONF
@@ -159,6 +173,7 @@ cleanup() {
     [ -n "$VNCVIEWER" ] && pkill -u "$U" -x "${VNCVIEWER##*/}"
     # Where libseat has its built-in backend, Hyprland leaves a helper process behind.
     pkill -9 -u "$U" -x Hyprland
+    [ -n "${AGENT_PID:-}" ] && kill "$AGENT_PID" 2>/dev/null
     [ -n "${NS:-}" ] && kill "$NS" 2>/dev/null
 }
 trap cleanup EXIT INT TERM
@@ -182,8 +197,11 @@ unshare -m --propagation private sh -c '
         touch "/tmp/.X11-unix/${s##*/}" && mount --bind "$s" "/tmp/.X11-unix/${s##*/}"
     done
     touch /tmp/.X11-unix/.hyprland-wsl && exec sleep infinity
-' sh "$AQ_LIB/${SYS_LIB##*/}" "$SYS_LIB" &
+' sh "$AQ_LIB/${SYS_LIB##*/}" "$SYS_LIB" 3>&- 4<&- &
 NS=$!
+# When the launcher itself is killed (WSL does that to the command of a wsl.exe that was killed),
+# a watcher ends the session in its place.
+( trap '' INT TERM HUP; while kill -0 $$ 2>/dev/null; do sleep 1; done; cleanup ) 3>&- 4<&- > /dev/null 2>&1 &
 wait_for nsenter -t $NS -m test -e /tmp/.X11-unix/.hyprland-wsl || die "could not set up the mount namespace"
 
 # Mesa's software renderer starts one thread per CPU core. Under WSL that costs far more
@@ -191,7 +209,7 @@ wait_for nsenter -t $NS -m test -e /tmp/.X11-unix/.hyprland-wsl || die "could no
 # the number is capped. HYPRLAND_WSL_THREADS overrides it.
 THREADS=${HYPRLAND_WSL_THREADS:-4}
 
-as() { nsenter -t $NS -m --wd="$H" sudo -u "$U" env -u WAYLAND_DISPLAY -u DISPLAY XDG_RUNTIME_DIR="$R" HOME="$H" LANG="$LANG" LP_NUM_THREADS="$THREADS" "$@"; }
+as() { nsenter -t $NS -m --wd="$H" sudo -u "$U" env -u WAYLAND_DISPLAY -u DISPLAY XDG_RUNTIME_DIR="$R" HOME="$H" LANG="$LANG" LP_NUM_THREADS="$THREADS" "$@" 3>&- 4<&-; }
 
 cd "$H" || exit 1
 
@@ -276,10 +294,12 @@ fi
 # The pointer is drawn into the picture by Hyprland. no-cursor-image.so keeps wayvnc from also
 # sending the viewer a pointer image, which Hyprland leaves transparent and which TigerVNC's
 # Windows viewer shows as a black square (src/no-cursor-image.c).
+if [ -z "$AGENT" ]; then
 PRELOAD=
 [ -f "$PREFIX/lib/no-cursor-image.so" ] && PRELOAD="LD_PRELOAD=$PREFIX/lib/no-cursor-image.so"
 as WAYLAND_DISPLAY=wayland-1 $DRIVER $PRELOAD HYPRLAND_WSL_POINTER_IMAGE=${HYPRLAND_WSL_POINTER_IMAGE:-0}     wayvnc --max-fps="$FPS" ${HYPRLAND_WSL_WAYVNC_OPTS:-} 127.0.0.1 "$PORT" > $LOG/wayvnc.log 2>&1 &
 wait_for test -S "$R/wayvncctl" || die "wayvnc did not start, see $LOG/wayvnc.log"
+fi
 # Say what is really drawing: the Direct3D 12 libraries are loaded only if that driver came up.
 HPID=$(pgrep -u "$U" -x Hyprland | head -n 1)
 if grep -q 'libd3d12' "/proc/$HPID/maps" 2>/dev/null; then
@@ -287,6 +307,17 @@ if grep -q 'libd3d12' "/proc/$HPID/maps" 2>/dev/null; then
 else
     RENDER="the CPU"
     [ "$GPU" = 1 ] && echo "hyprland-wsl: the Direct3D 12 driver did not start; rendering on the CPU instead" >&2
+fi
+if [ -n "$AGENT" ]; then
+    echo "Hyprland is running at $RES, rendering on $RENDER (shown through $AGENT)."
+    # The agent takes the picture by screen copy and gives input through a virtual pointer and
+    # keyboard. Hyprland draws the pointer into the picture.
+    nsenter -t $NS -m --wd="$H" sudo -u "$U" env -u DISPLAY WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR="$R"         HOME="$H" LANG="$LANG" "$AGENT" wlroots <&4 >&3 3>&- 4<&- 2> $LOG/agent.log &
+    AGENT_PID=$!
+    exec 3>&- 4<&-
+    # The viewer closed (the agent ends) or Hyprland exited.
+    wait -n $AGENT_PID $HYPR
+    exit 0
 fi
 echo "Hyprland is running at $RES, rendering on $RENDER (VNC on 127.0.0.1:$PORT)."
 

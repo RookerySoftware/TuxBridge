@@ -3,51 +3,68 @@
 How a distro's own desktop runs under WSL and shows on Windows, and what was tried for the
 ones that do not run yet.
 
-## What works: X11 desktops on TigerVNC's X server
+## How every desktop is shown: EasyWSL's own viewer and agent
 
-`src-tauri/linux/desktop-setup.sh` installs the desktop and TigerVNC's X server (Xvnc);
-`desktop-start.sh` runs the session on it, in a private mount namespace (WSLg keeps
-`/tmp/.X11-unix` read-only), and EasyWSL's viewer (the same TigerVNC viewer as for Hyprland)
-shows it.
+No VNC and no ports. `display/viewer` (Rust, on Windows) is a native window that starts the
+session through wsl.exe; `display/agent` (`easywsl-agent`, Rust, in Linux) runs next to the
+session, takes its frames and injects the viewer's input. wsl.exe carries both directions over
+WSL's own Hyper-V socket (about 650 MB/s measured), so there is nothing to configure.
 
-| Desktop | Distros | State |
-| --- | --- | --- |
-| Xfce | Kali (with Kali's look), Debian, Ubuntu (as in Xubuntu) | Kali tested end to end |
-| Cinnamon | Linux Mint | Tested end to end |
+- Frames: changed 64x64 tiles, LZ4-compressed; the viewer gets the newest frame and skips any it
+  could not keep up with. Real pixels, one desktop pixel per screen pixel; the desktop scales
+  itself as Windows does (GNOME and Cinnamon their text, Xfce its DPI, Hyprland everything).
+- Closing the window closes the agent's input; the agent then ends and the session with it.
+  The viewer kills wsl.exe only if that takes over five seconds, because WSL kills the Linux
+  side outright then. The scripts also keep a watcher for that case.
+- The agent is built on Ubuntu 24.04 (`scripts/build-display.ps1`, distro `easywsl-build`) and
+  needs glibc 2.39, so it runs on Linux Mint 22 and anything newer. It links libpipewire and
+  libxkbcommon, which `desktop-setup.sh` installs.
 
-Details that matter:
+| Desktop | Started by | Frames | Input | Pointer |
+| --- | --- | --- | --- | --- |
+| GNOME (Ubuntu) | `gnome-start.sh` (`gnome-shell --headless`) | Mutter ScreenCast (PipeWire) | Mutter RemoteDesktop | Metadata, drawn by the viewer |
+| Xfce (Kali, Debian, Ubuntu), Cinnamon (Mint) | `desktop-start.sh` on Xvfb | X Damage + GetImage of the changed area | XTest | XFixes, drawn by the viewer |
+| Hyprland (Omarchy and others) | `hyprland-wsl --agent` | wlr-screencopy (waits for damage) | Virtual pointer and keyboard (US layout; `EASYWSL_KEYBOARD_LAYOUT`) | Drawn by Hyprland |
+
+All tested end to end from the app: Kali Xfce, Mint Cinnamon, Omarchy, Ubuntu GNOME.
+
+### X11 desktops
+
+`desktop-setup.sh` installs the desktop and Xvfb; `desktop-start.sh` runs the session on it in
+a private mount namespace (WSLg keeps `/tmp/.X11-unix` read-only). Xvfb listens on that
+namespace's socket only: no TCP, and no abstract socket, which lives in the network all WSL
+distros share.
 
 - Docker-imported distros (Mint, CachyOS) run without systemd, so there is no system message
-  bus; `desktop-start.sh` starts one. logind and ConsoleKit stay missing (Cinnamon warns, and
-  power and session menus have nothing to talk to).
-- Xfce keeps its wallpaper per monitor name, and the distros name physical monitors; the
-  virtual screen is `VNC-0`, so the distro's default image is set for it on first start.
+  bus; `desktop-start.sh` starts one, outside the session's namespace so it outlives the
+  session, and checks that it answers (a socket left by a stopped bus once made Cinnamon abort).
+  logind and ConsoleKit stay missing (Cinnamon warns; power and session menus have nothing to
+  talk to).
+- Xfce keeps its wallpaper per monitor name; Xvfb's is `screen`, so the distro's default image
+  is set for it on first start.
 - Kali's panel layout uses plugins that `xfce4` alone does not install (cpugraph, genmon,
   power manager); without them a dialog asks to remove them.
+- Cinnamon repaints the whole screen while it animates (about 4 MB/s during its start), and
+  nothing when idle.
 
-## GNOME: headless, in EasyWSL's own viewer
+### GNOME
 
-Ubuntu's GNOME runs headless (`gnome-shell --headless --virtual-monitor WxH`) and shows in
-EasyWSL's own viewer, not over VNC: `display/agent` (Rust, in Linux) takes the frames from
-Mutter's ScreenCast interface (PipeWire) and injects input through its RemoteDesktop interface;
-`display/viewer` (Rust, on Windows) is a native window that starts the agent through wsl.exe
-and draws what it sends. wsl.exe carries both directions over WSL's own Hyper-V socket (about
-650 MB/s measured), so there is no network, no port and nothing to configure.
-
-- Frames: changed 64x64 tiles, LZ4-compressed; the pointer comes as metadata and the viewer
-  shows it as its own Windows pointer, so moving the mouse needs no round trip.
 - GPU: `gnome-start.sh` loads vgem so Mutter finds a render node; Mesa's Direct3D 12 driver then
   renders on the PC's GPU ("Created gbm renderer for /dev/dri/renderD128").
-- About 46 screen updates a second with something moving on every frame (pointer drawn in the
-  frames, before the metadata pointer); GNOME Terminal throttles its own redraws to about 20.
-- The agent is built on Ubuntu 26.04 and links its C library, so it runs there and on newer
-  releases; built on an older release it would run on more.
+- About 46 screen updates a second with something moving on every frame; GNOME Terminal
+  throttles its own redraws to about 20.
 - Known: GNOME shows a "Screen Lock disabled" notice once per session and its orange "screen is
-  being shared" icon while the agent records.
+  being shared" icon while the agent records; the dock lists Windows' drives.
+
+### Hyprland
+
+The launcher in the engine (`hyprland-wsl --agent`) starts Hyprland as before and, instead of
+wayvnc, the agent in Hyprland's namespace. Omarchy shows a red progress bar for its start-up
+notice, which keeps the frames coming (about 40 small updates a second) until it goes.
 
 ## Not working yet: KDE Plasma (Wayland-only)
 
-KDE Plasma 6.8 (Arch, CachyOS) no longer has an X11 session, so it cannot run on Xvnc, and its
+KDE Plasma 6.8 (Arch, CachyOS) no longer has an X11 session, so it cannot run on Xvfb, and its
 own remote paths crashed. Tried on 2026-10-26 on CachyOS with Plasma 6.8.1 (before GNOME's
 headless route above existed; KDE has no equivalent of GNOME's ScreenCast interface that worked):
 

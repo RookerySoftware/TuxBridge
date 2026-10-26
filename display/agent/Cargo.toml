@@ -10,3 +10,9 @@ easywsl-protocol = { path = "../protocol" }
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "5", features = ["blocking-api"] }
 pipewire = "0.8"
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-protocols-misc = { version = "0.3", features = ["client"] }
+xkbcommon = "0.8"
+x11rb = { version = "0.13", features = ["damage", "xfixes", "xtest"] }
+libc = "0.2"

@@ -1,27 +1,26 @@
-//! The Hyprland desktop of a distro, shown in a TigerVNC viewer on Windows: the steps of
-//! hyprland-wsl's hyprland-wsl.ps1, plus a free port per session (all WSL distros share one
-//! network, so two sessions cannot both use 5900).
+//! A distro's desktop, shown in EasyWSL's own viewer (display/viewer). The viewer starts the
+//! session through wsl.exe and draws it; easywsl-agent, next to the session in Linux, hands it
+//! over on wsl.exe's stdin and stdout. No network and no ports are involved, and the session
+//! ends when the viewer closes.
+//!
+//!   Hyprland                 hyprland-wsl --agent (wlr-screencopy, virtual input)
+//!   GNOME                    gnome-start.sh (Mutter's remote desktop interfaces)
+//!   Cinnamon, Xfce, ...      desktop-start.sh on a virtual X server (Xvfb)
 
 use std::collections::BTreeMap;
-use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::AsyncReadExt;
 
 use crate::store::Store;
-use crate::{paths, win, wsl};
-
-const VIEWER_VERSION: &str = "1.16.2";
+use crate::wsl;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
     pub distro: String,
-    pub port: u16,
     /// "starting", "running", "ended", "failed"
     pub state: String,
     pub message: Option<String>,
@@ -36,8 +35,8 @@ impl Sessions {
     }
 }
 
-fn set(app: &AppHandle, distro: &str, port: u16, state: &str, message: Option<String>) {
-    let session = Session { distro: distro.into(), port, state: state.into(), message };
+fn set(app: &AppHandle, distro: &str, state: &str, message: Option<String>) {
+    let session = Session { distro: distro.into(), state: state.into(), message };
     let sessions = app.state::<Sessions>();
     let mut map = sessions.0.lock().unwrap();
     if state == "ended" {
@@ -47,51 +46,6 @@ fn set(app: &AppHandle, distro: &str, port: u16, state: &str, message: Option<St
     }
     drop(map);
     let _ = app.emit("session", session);
-}
-
-/// A port nobody listens on. Binding on Windows' side also fails for a port a WSL distro
-/// listens on (WSL forwards those to Windows' localhost).
-fn free_port(taken: &[u16]) -> anyhow::Result<u16> {
-    (5900..5999)
-        .find(|p| !taken.contains(p) && TcpListener::bind(("127.0.0.1", *p)).is_ok())
-        .ok_or_else(|| anyhow::anyhow!("no free port between 5900 and 5999"))
-}
-
-fn vnc_answers(port: u16) -> bool {
-    use std::io::Read;
-    let Ok(mut stream) = TcpStream::connect_timeout(&([127, 0, 0, 1], port).into(), Duration::from_millis(500)) else {
-        return false;
-    };
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
-    let mut banner = [0u8; 12];
-    matches!(stream.read(&mut banner), Ok(n) if n >= 3 && &banner[..3] == b"RFB")
-}
-
-/// An installed TigerVNC, a copy fetched earlier, or a fresh download of its standalone viewer
-/// (kept only if it carries a valid signature).
-async fn viewer() -> anyhow::Result<PathBuf> {
-    let program_files = std::env::var_os("ProgramFiles").map(PathBuf::from).unwrap_or(r"C:\Program Files".into());
-    let installed = program_files.join(r"TigerVNC\vncviewer.exe");
-    if installed.exists() {
-        return Ok(installed);
-    }
-    let own = paths::data_dir().join("viewer").join(format!("vncviewer64-{VIEWER_VERSION}.exe"));
-    if own.exists() {
-        return Ok(own);
-    }
-    tokio::fs::create_dir_all(own.parent().unwrap()).await?;
-    let url = format!("https://sourceforge.net/projects/tigervnc/files/stable/{VIEWER_VERSION}/vncviewer64-{VIEWER_VERSION}.exe/download");
-    // SourceForge sends browsers to a mirror page; a plain client gets the file.
-    let client = reqwest::Client::builder().user_agent("curl/8.0 (EasyWSL)").build()?;
-    let bytes = client.get(url).send().await?.error_for_status()?.bytes().await?;
-    let tmp = own.with_extension("download");
-    tokio::fs::write(&tmp, &bytes).await?;
-    if !win::signature_valid(&tmp) {
-        let _ = tokio::fs::remove_file(&tmp).await;
-        anyhow::bail!("the downloaded viewer does not carry a valid signature");
-    }
-    tokio::fs::rename(&tmp, &own).await?;
-    Ok(own)
 }
 
 /// Runs a distro's one-time setup (Omarchy's first-boot setup) in a terminal window and waits
@@ -109,157 +63,13 @@ async fn first_start(distro: &str) -> anyhow::Result<()> {
     }
 }
 
-/// The size the desktop gets: the monitor the app is on, in Windows' scaled pixels (Windows
-/// enlarges the viewer's picture), or a window of 1600x900.
-fn desktop_size(app: &AppHandle, full_screen: bool) -> String {
-    if !full_screen {
-        return "1600x900".into();
-    }
-    let monitor = app.get_webview_window("main").and_then(|w| w.current_monitor().ok().flatten());
-    match monitor {
-        Some(m) => {
-            let size = m.size();
-            let scale = m.scale_factor().max(1.0);
-            format!("{}x{}", (size.width as f64 / scale) as u32, (size.height as f64 / scale) as u32)
-        }
-        None => "1920x1080".into(),
-    }
-}
-
-/// Which desktop to open: Hyprland, or the distro's own (Cinnamon, KDE Plasma, Xfce).
-#[derive(Debug, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum Kind {
-    Hyprland,
-    Own,
-}
-
-pub async fn open(app: AppHandle, distro: String, kind: Kind) -> Result<(), String> {
-    if app.state::<Sessions>().all().iter().any(|s| s.distro == distro) {
-        return Err(format!("The desktop of {distro} is open already."));
-    }
-    let taken: Vec<u16> = app.state::<Sessions>().all().iter().map(|s| s.port).collect();
-    let port = free_port(&taken).map_err(|e| e.to_string())?;
-    set(&app, &distro, port, "starting", Some("Preparing".into()));
-
-    let result = session(&app, &distro, port, kind).await;
-    match &result {
-        Ok(()) => set(&app, &distro, port, "ended", None),
-        Err(e) => set(&app, &distro, port, "failed", Some(e.clone())),
-    }
-    result
-}
-
-async fn session(app: &AppHandle, distro: &str, port: u16, kind: Kind) -> Result<(), String> {
-    let store = app.state::<Store>();
-    let info = store.distro(distro);
-    let full_screen = store.settings().full_screen;
-    if kind == Kind::Own && info.desktop.as_deref() == Some("gnome") {
-        return own_viewer_session(app, distro, port, &info, full_screen).await;
-    }
-
-    let viewer = viewer().await.map_err(|e| format!("The desktop viewer could not be downloaded: {e}. Check the internet connection."))?;
-
-    if kind == Kind::Hyprland && info.first_start_pending {
-        set(app, distro, port, "starting", Some("Finish the setup in the window that opened".into()));
-        first_start(distro).await.map_err(|e| e.to_string())?;
-        // The setup chose the account; the launcher's config names it.
-        let out = wsl::output(["-d", distro, "-u", "root", "-e", "sh", "-c", "sed -n 's/^HYPR_USER=//p' /etc/hyprland-wsl.conf"]).await;
-        let user = out.ok().map(|o| o.text.trim().to_string()).filter(|u| !u.is_empty());
-        store.update_distro(distro, |d| {
-            d.first_start_pending = false;
-            if user.is_some() {
-                d.user = user.clone();
-            }
-        });
-    }
-
-    set(app, distro, port, "starting", Some("Starting the desktop".into()));
-    let size = desktop_size(app, full_screen);
-    let log_path = paths::logs_dir().join(format!("desktop-{distro}.log"));
-    let _ = std::fs::create_dir_all(paths::logs_dir());
-    let port_text = port.to_string();
-    let mut launcher = match kind {
-        Kind::Hyprland => wsl::command(["-d", distro, "-u", "root", "-e", "hyprland-wsl", &size, "--scale", "1", "--port", &port_text, "--fps", "60", "--no-viewer"]),
-        Kind::Own => {
-            let (Some(desktop), Some(user)) = (info.desktop.clone(), info.user.clone()) else {
-                return Err(format!("{distro} has no desktop of its own installed."));
-            };
-            let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
-            wsl::command(["-d", distro, "-u", "root", "-e", "bash", &format!("{linux}/desktop-start.sh"), "run", &user, &desktop, &size, &port_text])
-        }
-    };
-    launcher.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
-    let mut child = launcher.spawn().map_err(|e| format!("WSL did not start: {e}"))?;
-
-    // The launcher's messages go to a log, read back when it fails.
-    let mut out = child.stdout.take().unwrap();
-    let mut err = child.stderr.take().unwrap();
-    let log_task = tokio::spawn({
-        let log_path = log_path.clone();
-        async move {
-            let mut a = Vec::new();
-            let mut b = Vec::new();
-            let _ = tokio::join!(out.read_to_end(&mut a), err.read_to_end(&mut b));
-            let mut text = wsl::decode(&a);
-            text.push_str(&wsl::decode(&b));
-            let _ = std::fs::write(log_path, &text);
-            text
-        }
-    });
-
-    let mut up = false;
-    for _ in 0..90 {
-        if vnc_answers(port) {
-            up = true;
-            break;
-        }
-        if let Ok(Some(_)) = child.try_wait() {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(500)).await;
-    }
-    if !up {
-        let _ = child.start_kill();
-        let text = log_task.await.unwrap_or_default();
-        let reason = text.lines().rev().find(|l| l.contains("error") || l.contains("did not")).unwrap_or("").trim().to_string();
-        return Err(if reason.is_empty() {
-            format!("The desktop did not start. Details are in {}.", log_path.display())
-        } else {
-            format!("The desktop did not start: {reason}")
-        });
-    }
-
-    set(app, distro, port, "running", None);
-    let mut args = vec!["-RemoteResize=0", "-FullscreenSystemKeys=1", "-ReconnectOnError=0", "-AlwaysCursor=1", "-CursorType=Dot"];
-    if full_screen {
-        args.push("-FullScreen=1");
-    }
-    let target = format!("127.0.0.1::{port}");
-    args.push(&target);
-    // The viewer leaves display scaling to Windows, which enlarges its picture to the screen.
-    let viewer_status = tokio::process::Command::new(&viewer).args(&args).env("__COMPAT_LAYER", "DpiUnaware").status().await;
-
-    // Closing the viewer leaves the session running, so it is ended here. When the session
-    // ended from inside (Power Off stops the whole instance), its wsl.exe ends at about the same
-    // time, and nothing more is done: a wsl.exe call naming a stopping instance would start it again.
-    let ended = tokio::time::timeout(Duration::from_secs(4), child.wait()).await.is_ok();
-    if !ended {
-        match kind {
-            Kind::Hyprland => {
-                let _ = wsl::output(["-d", distro, "-u", "root", "-e", "pkill", "-x", "Hyprland"]).await;
-            }
-            Kind::Own => {
-                if let Ok(linux) = crate::engine::prepare_linux(app) {
-                    let _ = wsl::output(["-d", distro, "-u", "root", "-e", "bash", &format!("{linux}/desktop-start.sh"), "stop"]).await;
-                }
-            }
-        }
-        let _ = tokio::time::timeout(Duration::from_secs(10), child.wait()).await;
-    }
-    let _ = log_task.await;
-    viewer_status.map_err(|e| format!("The viewer did not start: {e}"))?;
-    Ok(())
+/// Whose desktop it is, for a system EasyWSL knows no account of: the one the desktop was set
+/// up for, or else the first regular account.
+async fn desktop_user(distro: &str) -> Option<String> {
+    let script = r#"cat /etc/easywsl/desktop-user 2> /dev/null ||
+        awk -F: '$3 >= 1000 && $3 < 60000 && $6 ~ /^\/home\// { print $1; exit }' /etc/passwd"#;
+    let out = wsl::output(["-d", distro, "-u", "root", "-e", "sh", "-c", script]).await.ok()?;
+    Some(out.text.trim().to_string()).filter(|u| !u.is_empty())
 }
 
 /// The monitor the app is on: its size in real pixels and Windows' scaling.
@@ -271,48 +81,134 @@ fn monitor(app: &AppHandle) -> ((u32, u32), f64) {
     }
 }
 
-/// A desktop shown in EasyWSL's own viewer (GNOME): the viewer starts the session through
-/// wsl.exe and draws it, with no network in between. The session ends when the viewer closes.
-async fn own_viewer_session(app: &AppHandle, distro: &str, port: u16, info: &crate::store::DistroInfo, full_screen: bool) -> Result<(), String> {
-    let user = info.user.clone().ok_or_else(|| format!("{distro} has no user account for its desktop."))?;
-    let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
-    let viewer = app
-        .path()
-        .resource_dir()
-        .map_err(|e| e.to_string())?
-        .join("bin")
-        .join("easywsl-viewer.exe");
+/// Which desktop to open: Hyprland, or the distro's own (GNOME, Cinnamon, Xfce).
+#[derive(Debug, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Kind {
+    Hyprland,
+    Own,
+}
+
+pub async fn open(app: AppHandle, distro: String, kind: Kind) -> Result<(), String> {
+    if app.state::<Sessions>().all().iter().any(|s| s.distro == distro) {
+        return Err(format!("The desktop of {distro} is open already."));
+    }
+    set(&app, &distro, "starting", Some("Preparing".into()));
+
+    let result = session(&app, &distro, kind).await;
+    match &result {
+        Ok(()) => set(&app, &distro, "ended", None),
+        Err(e) => set(&app, &distro, "failed", Some(e.clone())),
+    }
+    result
+}
+
+async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String> {
+    let store = app.state::<Store>();
+    let info = store.distro(distro);
+    let full_screen = store.settings().full_screen;
+
+    if kind == Kind::Hyprland && info.first_start_pending {
+        set(app, distro, "starting", Some("Finish the setup in the window that opened".into()));
+        first_start(distro).await.map_err(|e| e.to_string())?;
+        // The setup chose the account; the launcher's config names it.
+        let out = wsl::output(["-d", distro, "-u", "root", "-e", "sh", "-c", "sed -n 's/^HYPR_USER=//p' /etc/hyprland-wsl.conf"]).await;
+        let user = out.ok().map(|o| o.text.trim().to_string()).filter(|u| !u.is_empty());
+        store.update_distro(distro, |d| {
+            d.first_start_pending = false;
+            if user.is_some() {
+                d.user = user.clone();
+            }
+        });
+    }
+    let info = store.distro(distro);
+
+    let viewer = app.path().resource_dir().map_err(|e| e.to_string())?.join("bin").join("easywsl-viewer.exe");
     if !viewer.exists() {
         return Err("The desktop viewer is missing; reinstall EasyWSL.".into());
     }
-    // Real pixels, one desktop pixel per screen pixel; GNOME scales its text as Windows does.
+    let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
+    let agent = format!("{linux}/easywsl-agent");
+
+    // Real pixels, one desktop pixel per screen pixel; the desktop scales its text (Hyprland
+    // everything) as Windows does.
     let ((mw, mh), scale) = monitor(app);
     let (w, h) = if full_screen { (mw, mh) } else { ((1600.0 * scale) as u32, (900.0 * scale) as u32) };
     let size = format!("{w}x{h}");
-    let scale_text = format!("{:.2}", scale);
+    let scale_text = format!("{scale:.2}");
+
+    let mut user = info.user.clone();
+    if user.is_none() {
+        user = desktop_user(distro).await;
+        store.update_distro(distro, |d| d.user = user.clone());
+    }
+    // The command the viewer runs, and the log in the distro that says why a session failed.
+    let (command, log): (Vec<String>, Option<String>) = match kind {
+        Kind::Hyprland => {
+            // The launcher shipped with this app, which knows --agent; the one installed in the
+            // distro may be older.
+            let engine = crate::engine::prepare(app).map_err(|e| e.to_string())?;
+            (vec!["bash".into(), format!("{engine}/hyprland-wsl"), size.clone(), "--scale".into(), scale_text, "--agent".into(), agent], None)
+        }
+        Kind::Own => {
+            let (Some(desktop), Some(user)) = (info.desktop.clone(), user.clone()) else {
+                return Err(format!("{distro} has no desktop of its own installed."));
+            };
+            if desktop == "gnome" {
+                let log = format!("/run/easywsl/gnome-{user}.log");
+                (vec!["bash".into(), format!("{linux}/gnome-start.sh"), user, size.clone(), agent, scale_text], Some(log))
+            } else {
+                let log = format!("/run/easywsl/desktop-{user}.log");
+                (vec!["bash".into(), format!("{linux}/desktop-start.sh"), "run".into(), user, desktop, size.clone(), agent, scale_text], Some(log))
+            }
+        }
+    };
+
     let mut args: Vec<String> = Vec::new();
     if full_screen {
         args.push("--fullscreen".into());
     }
-    args.extend(["--size".into(), size.clone(), "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
+    args.extend(["--size".into(), size, "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
     args.push(wsl::exe().to_string_lossy().into_owned());
-    args.extend(["-d", distro, "-u", "root", "-e", "bash"].map(String::from));
-    args.push(format!("{linux}/gnome-start.sh"));
-    args.extend([user, size, format!("{linux}/easywsl-agent"), scale_text]);
+    args.extend(["-d", distro, "-u", "root", "-e"].map(String::from));
+    args.extend(command);
 
     let mut child = tokio::process::Command::new(&viewer)
         .args(&args)
+        .env("WSL_UTF8", "1")
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("The desktop viewer did not start: {e}"))?;
-    set(app, distro, port, "running", None);
+    set(app, distro, "running", None);
+    // What the viewer and the launcher say, for when the session fails.
+    let mut stderr = child.stderr.take().unwrap();
+    let said = tokio::spawn(async move {
+        let mut bytes = Vec::new();
+        let _ = stderr.read_to_end(&mut bytes).await;
+        wsl::decode(&bytes)
+    });
     let status = child.wait().await.map_err(|e| e.to_string())?;
-    if !status.success() {
-        let log = wsl::output(["-d", distro, "-u", "root", "-e", "tail", "-n", "5", &format!("/run/easywsl/gnome-{}.log", info.user.as_deref().unwrap_or(""))])
-            .await
-            .map(|o| o.text)
-            .unwrap_or_default();
-        let reason = log.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
-        return Err(if reason.is_empty() { "The desktop ended unexpectedly.".into() } else { format!("The desktop ended: {reason}") });
+    let said = said.await.unwrap_or_default();
+    let _ = std::fs::create_dir_all(crate::paths::logs_dir());
+    let _ = std::fs::write(crate::paths::logs_dir().join(format!("desktop-{distro}.log")), &said);
+    if status.success() {
+        return Ok(());
     }
-    Ok(())
+
+    let mut text = said;
+    if let Some(log) = log {
+        if let Ok(out) = wsl::output(["-d", distro, "-u", "root", "-e", "tail", "-n", "5", &log]).await {
+            text.push_str(&out.text);
+        }
+    }
+    let reason = text
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .map(|l| l.trim_start_matches("hyprland-wsl: ").to_string());
+    Err(match reason {
+        Some(r) => format!("The desktop did not start: {r}"),
+        None => "The desktop did not start.".into(),
+    })
 }

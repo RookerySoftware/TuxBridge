@@ -5,7 +5,9 @@
 //!
 //!   easywsl-viewer [--fullscreen] [--title TITLE] [--size WxH] -- COMMAND [ARGS...]
 //!
-//! Ctrl+Alt+Enter switches between full screen and a window. Closing the window ends the command.
+//! Ctrl+Alt+Enter switches between full screen and a window. Closing the window ends the command
+//! (its input is closed first, so it can end the session itself). Exit code 3: the command ended
+//! before it sent a picture.
 
 #![windows_subsystem = "windows"]
 
@@ -46,13 +48,20 @@ enum Message {
 
 /// Writes input to the agent; shared with the keyboard hook's thread.
 #[derive(Clone)]
-pub struct InputSink(Arc<Mutex<BufWriter<ChildStdin>>>);
+pub struct InputSink(Arc<Mutex<Option<BufWriter<ChildStdin>>>>);
 
 impl InputSink {
     pub fn send(&self, input: Input) {
         let mut w = self.0.lock().unwrap();
-        let _ = input.write(&mut *w);
-        let _ = w.flush();
+        if let Some(w) = w.as_mut() {
+            let _ = input.write(w);
+            let _ = w.flush();
+        }
+    }
+
+    /// Ends the agent's input, which tells it to end the session.
+    fn close(&self) {
+        self.0.lock().unwrap().take();
     }
 }
 
@@ -102,6 +111,8 @@ struct App {
     /// Where the desktop is drawn in the window: offset and scale (it keeps its aspect ratio).
     placement: (f64, f64, f64),
     ended: Option<String>,
+    /// A picture has arrived.
+    pictured: bool,
 }
 
 impl App {
@@ -218,6 +229,7 @@ impl ApplicationHandler<Message> for App {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, message: Message) {
         match message {
             Message::Frame => {
+                self.pictured = true;
                 if let Some(w) = &self.window {
                     w.request_redraw();
                 }
@@ -285,6 +297,18 @@ impl ApplicationHandler<Message> for App {
     }
 
     fn exiting(&mut self, _: &ActiveEventLoop) {
+        // The window goes at once. The session gets a few seconds to end by itself: killing
+        // wsl.exe kills the Linux side outright, with no chance to clean up.
+        self.surface = None;
+        self.window = None;
+        self.input.close();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            if !matches!(self.child.try_wait(), Ok(None)) {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
         let _ = self.child.kill();
     }
 }
@@ -356,7 +380,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let input = InputSink(Arc::new(Mutex::new(BufWriter::new(child.stdin.take().unwrap()))));
+    let input = InputSink(Arc::new(Mutex::new(Some(BufWriter::new(child.stdin.take().unwrap())))));
     let stdout = child.stdout.take().unwrap();
     let desktop = Arc::new(Mutex::new(Desktop { width: 0, height: 0, pixels: Vec::new() }));
 
@@ -380,10 +404,15 @@ fn main() {
         alt: false,
         placement: (0.0, 0.0, 1.0),
         ended: None,
+        pictured: false,
     };
     let _ = event_loop.run_app(&mut app);
     let _ = app.child.kill();
-    if let Some(reason) = app.ended.filter(|r| !r.is_empty()) {
+    if let Some(reason) = app.ended.as_ref().filter(|r| !r.is_empty()) {
         eprintln!("{reason}");
+    }
+    // Exit code 3: the session ended before it showed anything (it did not start).
+    if app.ended.is_some() && !app.pictured {
+        std::process::exit(3);
     }
 }

@@ -38,8 +38,9 @@ Tests against the real PC (WSL, the registry, Docker Hub): `cargo test -- --igno
 
 ## The display
 
-`display/` holds EasyWSL's own display, used for GNOME: a Rust agent inside Linux and a Rust
-viewer window on Windows, talking over wsl.exe (no network). See [docs/desktops.md](docs/desktops.md).
+`display/` holds EasyWSL's own display, used for every desktop (GNOME, Xfce, Cinnamon, Hyprland):
+a Rust agent inside Linux and a Rust viewer window on Windows, talking over wsl.exe (no network,
+no VNC). See [docs/desktops.md](docs/desktops.md).
 Build both before running the app:
 
 ```powershell
@@ -63,7 +64,7 @@ in `src-tauri/engine/VERSION`. Commit the result.
 | `src-tauri/src/system.rs` | Is the PC ready, and fixing it |
 | `src-tauri/src/catalog.rs` | The systems on offer, described for newcomers |
 | `src-tauri/src/install.rs` | Installing one, step by step |
-| `src-tauri/src/desktop.rs` | Hyprland desktop sessions and the viewer |
+| `src-tauri/src/desktop.rs` | Desktop sessions in EasyWSL's viewer |
 | `src-tauri/src/docker.rs` | Downloading Docker Hub images (for systems without a WSL image) |
 | `src-tauri/src/jobs.rs` | Long tasks with steps and a log |
 | `src/` | The window (React, Tailwind) |
