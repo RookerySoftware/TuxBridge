@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Built by scripts/build-display.ps1
+/src-tauri/bin/
+/src-tauri/linux/easywsl-agent

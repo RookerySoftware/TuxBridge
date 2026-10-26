@@ -39,7 +39,8 @@
     ],
     "resources": {
       "engine/": "engine/",
-      "linux/": "linux/"
+      "linux/": "linux/",
+      "bin/": "bin/"
     },
     "shortDescription": "Linux on Windows, made easy",
     "publisher": "ItsOverk1ll"

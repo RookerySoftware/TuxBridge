@@ -70,7 +70,7 @@ pub fn all() -> Vec<Entry> {
             description: "Ubuntu is the Linux most guides and answers online are written for, so help is easy to find. \
                           LTS means it gets updates for years.",
             source: Source::Wsl { name: "Ubuntu-26.04" },
-            desktop: Some(Desktop { id: "xfce", name: "Xfce", note: Some("Ubuntu's usual desktop, GNOME, cannot run inside WSL yet. This is Xfce, the desktop of Xubuntu, the official Ubuntu flavour."), minutes: "5 to 10", size_gb: 1.0 }),
+            desktop: Some(Desktop { id: "gnome", name: "GNOME", note: None, minutes: "5 to 10", size_gb: 1.5 }),
             hyprland: Hyprland::Optional,
             hyprland_note: Some("Ubuntu's Hyprland is older and a little less smooth than on Arch."),
             third_party: None,

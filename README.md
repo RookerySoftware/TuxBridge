@@ -36,6 +36,16 @@ working on the UI; `?setup=featuresOff` and the like show the setup screens, `?s
 Tests against the real PC (WSL, the registry, Docker Hub): `cargo test -- --ignored` in
 `src-tauri`.
 
+## The display
+
+`display/` holds EasyWSL's own display, used for GNOME: a Rust agent inside Linux and a Rust
+viewer window on Windows, talking over wsl.exe (no network). See [docs/desktops.md](docs/desktops.md).
+Build both before running the app:
+
+```powershell
+pwsh .\scripts\build-display.ps1 -BuildDistro <a distro with Rust, libpipewire-0.3-dev and clang> -BuildUser <its user>
+```
+
 ## Updating the engine
 
 ```powershell

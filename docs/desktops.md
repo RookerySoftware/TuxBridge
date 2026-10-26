@@ -25,7 +25,27 @@ Details that matter:
 - Kali's panel layout uses plugins that `xfce4` alone does not install (cpugraph, genmon,
   power manager); without them a dialog asks to remove them.
 
-## Not working yet: Wayland-only desktops
+## GNOME: headless, in EasyWSL's own viewer
+
+Ubuntu's GNOME runs headless (`gnome-shell --headless --virtual-monitor WxH`) and shows in
+EasyWSL's own viewer, not over VNC: `display/agent` (Rust, in Linux) takes the frames from
+Mutter's ScreenCast interface (PipeWire) and injects input through its RemoteDesktop interface;
+`display/viewer` (Rust, on Windows) is a native window that starts the agent through wsl.exe
+and draws what it sends. wsl.exe carries both directions over WSL's own Hyper-V socket (about
+650 MB/s measured), so there is no network, no port and nothing to configure.
+
+- Frames: changed 64x64 tiles, LZ4-compressed; the pointer comes as metadata and the viewer
+  shows it as its own Windows pointer, so moving the mouse needs no round trip.
+- GPU: `gnome-start.sh` loads vgem so Mutter finds a render node; Mesa's Direct3D 12 driver then
+  renders on the PC's GPU ("Created gbm renderer for /dev/dri/renderD128").
+- About 46 screen updates a second with something moving on every frame (pointer drawn in the
+  frames, before the metadata pointer); GNOME Terminal throttles its own redraws to about 20.
+- The agent is built on Ubuntu 26.04 and links its C library, so it runs there and on newer
+  releases; built on an older release it would run on more.
+- Known: GNOME shows a "Screen Lock disabled" notice once per session and its orange "screen is
+  being shared" icon while the agent records.
+
+## Not working yet: KDE Plasma (Wayland-only)
 
 KDE Plasma 6.8 (Arch, CachyOS) and current GNOME (Ubuntu 26.04) no longer have an X11
 session, so they cannot run on Xvnc. Tried on 2026-10-26 on CachyOS with Plasma 6.8.1:

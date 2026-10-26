@@ -2,7 +2,7 @@
 # Installs a distro's own desktop (Cinnamon, KDE Plasma, Xfce) and TigerVNC's X server, which
 # desktop-start.sh runs it on. Run as root inside the distro:
 #
-#   desktop-setup.sh DESKTOP USER        DESKTOP: cinnamon | kde | xfce
+#   desktop-setup.sh DESKTOP USER        DESKTOP: cinnamon | kde | xfce | gnome
 #
 # The desktop is shown on Windows through EasyWSL's viewer, like the Hyprland desktop. No login
 # screen or display manager is installed: EasyWSL starts the session.
@@ -52,11 +52,24 @@ else
             esac
             ;;
         kde) pkgs=(kde-plasma-desktop konsole dolphin) ;;
+        # GNOME runs headless and shows in EasyWSL's own viewer (gnome-start.sh), not on Xvnc.
+        gnome)
+            pkgs=(gnome-shell gnome-session gnome-terminal nautilus gnome-control-center gnome-text-editor
+                  pipewire wireplumber pipewire-pulse dbus-user-session xwayland libglib2.0-bin util-linux)
+            # Ubuntu's own look: its session, settings, theme, wallpapers and font.
+            for p in ubuntu-session ubuntu-settings yaru-theme-gnome-shell yaru-theme-gtk yaru-theme-icon \
+                     ubuntu-wallpapers fonts-ubuntu; do
+                apt-cache show "$p" > /dev/null 2>&1 && pkgs+=("$p")
+            done
+            ;;
         *) echo "unknown desktop $DESKTOP" >&2; exit 1 ;;
     esac
     step "Installing the desktop"
     apt-get update
-    apt-get install -y --no-install-recommends "${pkgs[@]}" tigervnc-standalone-server dbus-x11 xauth \
+    # GNOME needs no X server of its own; the others run on TigerVNC's.
+    vnc=(tigervnc-standalone-server dbus-x11 xauth)
+    [ "$DESKTOP" = gnome ] && vnc=()
+    apt-get install -y --no-install-recommends "${pkgs[@]}" "${vnc[@]}" \
         fonts-dejavu-core fonts-noto-core adwaita-icon-theme pulseaudio-utils at-spi2-core
 fi
 

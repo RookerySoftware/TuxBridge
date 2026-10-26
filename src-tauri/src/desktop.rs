@@ -154,6 +154,9 @@ async fn session(app: &AppHandle, distro: &str, port: u16, kind: Kind) -> Result
     let store = app.state::<Store>();
     let info = store.distro(distro);
     let full_screen = store.settings().full_screen;
+    if kind == Kind::Own && info.desktop.as_deref() == Some("gnome") {
+        return own_viewer_session(app, distro, port, &info, full_screen).await;
+    }
 
     let viewer = viewer().await.map_err(|e| format!("The desktop viewer could not be downloaded: {e}. Check the internet connection."))?;
 
@@ -256,5 +259,60 @@ async fn session(app: &AppHandle, distro: &str, port: u16, kind: Kind) -> Result
     }
     let _ = log_task.await;
     viewer_status.map_err(|e| format!("The viewer did not start: {e}"))?;
+    Ok(())
+}
+
+/// The monitor the app is on: its size in real pixels and Windows' scaling.
+fn monitor(app: &AppHandle) -> ((u32, u32), f64) {
+    let monitor = app.get_webview_window("main").and_then(|w| w.current_monitor().ok().flatten());
+    match monitor {
+        Some(m) => ((m.size().width, m.size().height), m.scale_factor().max(1.0)),
+        None => ((1920, 1080), 1.0),
+    }
+}
+
+/// A desktop shown in EasyWSL's own viewer (GNOME): the viewer starts the session through
+/// wsl.exe and draws it, with no network in between. The session ends when the viewer closes.
+async fn own_viewer_session(app: &AppHandle, distro: &str, port: u16, info: &crate::store::DistroInfo, full_screen: bool) -> Result<(), String> {
+    let user = info.user.clone().ok_or_else(|| format!("{distro} has no user account for its desktop."))?;
+    let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
+    let viewer = app
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("bin")
+        .join("easywsl-viewer.exe");
+    if !viewer.exists() {
+        return Err("The desktop viewer is missing; reinstall EasyWSL.".into());
+    }
+    // Real pixels, one desktop pixel per screen pixel; GNOME scales its text as Windows does.
+    let ((mw, mh), scale) = monitor(app);
+    let (w, h) = if full_screen { (mw, mh) } else { ((1600.0 * scale) as u32, (900.0 * scale) as u32) };
+    let size = format!("{w}x{h}");
+    let scale_text = format!("{:.2}", scale);
+    let mut args: Vec<String> = Vec::new();
+    if full_screen {
+        args.push("--fullscreen".into());
+    }
+    args.extend(["--size".into(), size.clone(), "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
+    args.push(wsl::exe().to_string_lossy().into_owned());
+    args.extend(["-d", distro, "-u", "root", "-e", "bash"].map(String::from));
+    args.push(format!("{linux}/gnome-start.sh"));
+    args.extend([user, size, format!("{linux}/easywsl-agent"), scale_text]);
+
+    let mut child = tokio::process::Command::new(&viewer)
+        .args(&args)
+        .spawn()
+        .map_err(|e| format!("The desktop viewer did not start: {e}"))?;
+    set(app, distro, port, "running", None);
+    let status = child.wait().await.map_err(|e| e.to_string())?;
+    if !status.success() {
+        let log = wsl::output(["-d", distro, "-u", "root", "-e", "tail", "-n", "5", &format!("/run/easywsl/gnome-{}.log", info.user.as_deref().unwrap_or(""))])
+            .await
+            .map(|o| o.text)
+            .unwrap_or_default();
+        let reason = log.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
+        return Err(if reason.is_empty() { "The desktop ended unexpectedly.".into() } else { format!("The desktop ended: {reason}") });
+    }
     Ok(())
 }
