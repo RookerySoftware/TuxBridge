@@ -126,7 +126,15 @@ fn desktop_size(app: &AppHandle, full_screen: bool) -> String {
     }
 }
 
-pub async fn open(app: AppHandle, distro: String) -> Result<(), String> {
+/// Which desktop to open: Hyprland, or the distro's own (Cinnamon, KDE Plasma, Xfce).
+#[derive(Debug, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Kind {
+    Hyprland,
+    Own,
+}
+
+pub async fn open(app: AppHandle, distro: String, kind: Kind) -> Result<(), String> {
     if app.state::<Sessions>().all().iter().any(|s| s.distro == distro) {
         return Err(format!("The desktop of {distro} is open already."));
     }
@@ -134,7 +142,7 @@ pub async fn open(app: AppHandle, distro: String) -> Result<(), String> {
     let port = free_port(&taken).map_err(|e| e.to_string())?;
     set(&app, &distro, port, "starting", Some("Preparing".into()));
 
-    let result = session(&app, &distro, port).await;
+    let result = session(&app, &distro, port, kind).await;
     match &result {
         Ok(()) => set(&app, &distro, port, "ended", None),
         Err(e) => set(&app, &distro, port, "failed", Some(e.clone())),
@@ -142,14 +150,14 @@ pub async fn open(app: AppHandle, distro: String) -> Result<(), String> {
     result
 }
 
-async fn session(app: &AppHandle, distro: &str, port: u16) -> Result<(), String> {
+async fn session(app: &AppHandle, distro: &str, port: u16, kind: Kind) -> Result<(), String> {
     let store = app.state::<Store>();
     let info = store.distro(distro);
     let full_screen = store.settings().full_screen;
 
     let viewer = viewer().await.map_err(|e| format!("The desktop viewer could not be downloaded: {e}. Check the internet connection."))?;
 
-    if info.first_start_pending {
+    if kind == Kind::Hyprland && info.first_start_pending {
         set(app, distro, port, "starting", Some("Finish the setup in the window that opened".into()));
         first_start(distro).await.map_err(|e| e.to_string())?;
         // The setup chose the account; the launcher's config names it.
@@ -168,7 +176,16 @@ async fn session(app: &AppHandle, distro: &str, port: u16) -> Result<(), String>
     let log_path = paths::logs_dir().join(format!("desktop-{distro}.log"));
     let _ = std::fs::create_dir_all(paths::logs_dir());
     let port_text = port.to_string();
-    let mut launcher = wsl::command(["-d", distro, "-u", "root", "-e", "hyprland-wsl", &size, "--scale", "1", "--port", &port_text, "--fps", "60", "--no-viewer"]);
+    let mut launcher = match kind {
+        Kind::Hyprland => wsl::command(["-d", distro, "-u", "root", "-e", "hyprland-wsl", &size, "--scale", "1", "--port", &port_text, "--fps", "60", "--no-viewer"]),
+        Kind::Own => {
+            let (Some(desktop), Some(user)) = (info.desktop.clone(), info.user.clone()) else {
+                return Err(format!("{distro} has no desktop of its own installed."));
+            };
+            let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
+            wsl::command(["-d", distro, "-u", "root", "-e", "bash", &format!("{linux}/desktop-start.sh"), "run", &user, &desktop, &size, &port_text])
+        }
+    };
     launcher.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
     let mut child = launcher.spawn().map_err(|e| format!("WSL did not start: {e}"))?;
 
@@ -225,7 +242,16 @@ async fn session(app: &AppHandle, distro: &str, port: u16) -> Result<(), String>
     // time, and nothing more is done: a wsl.exe call naming a stopping instance would start it again.
     let ended = tokio::time::timeout(Duration::from_secs(4), child.wait()).await.is_ok();
     if !ended {
-        let _ = wsl::output(["-d", distro, "-u", "root", "-e", "pkill", "-x", "Hyprland"]).await;
+        match kind {
+            Kind::Hyprland => {
+                let _ = wsl::output(["-d", distro, "-u", "root", "-e", "pkill", "-x", "Hyprland"]).await;
+            }
+            Kind::Own => {
+                if let Ok(linux) = crate::engine::prepare_linux(app) {
+                    let _ = wsl::output(["-d", distro, "-u", "root", "-e", "bash", &format!("{linux}/desktop-start.sh"), "stop"]).await;
+                }
+            }
+        }
         let _ = tokio::time::timeout(Duration::from_secs(10), child.wait()).await;
     }
     let _ = log_task.await;

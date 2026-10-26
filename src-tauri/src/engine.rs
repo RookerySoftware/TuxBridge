@@ -36,16 +36,35 @@ fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Copies a bundled folder to `target` once (a folder there is complete or absent).
+fn unpack(source: &Path, target: &Path) -> anyhow::Result<String> {
+    if !target.exists() {
+        let partial = target.with_extension("partial");
+        let _ = std::fs::remove_dir_all(&partial);
+        copy_dir(source, &partial)?;
+        std::fs::rename(&partial, target)?;
+    }
+    paths::to_wsl(target)
+}
+
 /// The engine's folder as seen from inside WSL (/mnt/c/Users/.../engine/<version>).
 pub fn prepare(app: &AppHandle) -> anyhow::Result<String> {
     let source = bundled(app)?;
-    let target = paths::data_dir().join("engine").join(version(&source));
-    if !target.join("install.sh").exists() {
-        let partial = target.with_extension("partial");
-        let _ = std::fs::remove_dir_all(&partial);
-        copy_dir(&source, &partial)?;
-        let _ = std::fs::remove_dir_all(&target);
-        std::fs::rename(&partial, &target)?;
+    unpack(&source, &paths::data_dir().join("engine").join(version(&source)))
+}
+
+/// EasyWSL's own Linux scripts (src-tauri/linux: the distros' own desktops), as seen from inside
+/// WSL. Named after a hash of their contents, so a changed script is never served from an old copy.
+pub fn prepare_linux(app: &AppHandle) -> anyhow::Result<String> {
+    use sha2::{Digest, Sha256};
+    let source = app.path().resource_dir()?.join("linux");
+    anyhow::ensure!(source.join("desktop-start.sh").exists(), "the app's desktop files are missing; reinstall EasyWSL");
+    let mut names: Vec<_> = std::fs::read_dir(&source)?.flatten().map(|e| e.path()).collect();
+    names.sort();
+    let mut hash = Sha256::new();
+    for path in names {
+        hash.update(std::fs::read(path).unwrap_or_default());
     }
-    paths::to_wsl(&target)
+    let tag: String = hex::encode(hash.finalize()).chars().take(12).collect();
+    unpack(&source, &paths::data_dir().join("linux").join(tag))
 }

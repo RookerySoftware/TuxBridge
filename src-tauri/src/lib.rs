@@ -51,7 +51,9 @@ async fn probe(app: AppHandle, name: String) {
     let script = r#"id -un; . /etc/os-release 2>/dev/null; echo "ID=$ID"
         [ -x /usr/local/bin/hyprland-wsl ] && echo HYPRLAND
         sed -n 's/^HYPR_USER=/HYPR_USER=/p' /etc/hyprland-wsl.conf 2>/dev/null
-        [ -e /etc/hyprland-wsl/first-start ] && echo FIRST_START; true"#;
+        [ -e /etc/hyprland-wsl/first-start ] && echo FIRST_START
+        [ -f /etc/easywsl/desktop ] && echo "DESKTOP=$(cat /etc/easywsl/desktop)"
+        [ -f /etc/easywsl/desktop-user ] && echo "DESKTOP_USER=$(cat /etc/easywsl/desktop-user)"; true"#;
     let Ok(out) = wsl::output(["-d", &name, "-e", "sh", "-c", script]).await else { return };
     let _ = std::fs::create_dir_all(paths::logs_dir());
     let _ = std::fs::write(paths::logs_dir().join(format!("probe-{name}.log")), format!("exit {}\n{}", out.code, out.text));
@@ -74,12 +76,15 @@ async fn probe(app: AppHandle, name: String) {
     let hyprland = lines.contains(&"HYPRLAND");
     let hypr_user = lines.iter().find_map(|l| l.strip_prefix("HYPR_USER=")).map(String::from).filter(|u| !u.is_empty());
     let first_start = lines.contains(&"FIRST_START");
+    let desktop_user = lines.iter().find_map(|l| l.strip_prefix("DESKTOP_USER=")).map(String::from).filter(|u| !u.is_empty());
+    let own_desktop = lines.iter().find_map(|l| l.strip_prefix("DESKTOP=")).map(String::from).filter(|d| !d.is_empty());
     app.state::<Store>().update_distro(&name, |d| {
         d.probed = true;
         d.catalog_id = catalog_id.map(String::from);
         d.hyprland = hyprland;
-        d.user = hypr_user.clone().or(default_user.clone());
+        d.user = hypr_user.clone().or(desktop_user.clone()).or(default_user.clone());
         d.first_start_pending = first_start;
+        d.desktop = own_desktop.clone();
     });
     let _ = app.emit("distros-changed", ());
 }
@@ -197,18 +202,25 @@ fn start_install(app: AppHandle, request: install::Request) -> Result<u64, Strin
     Ok(id)
 }
 
+/// Adds a desktop to an installed system: Hyprland, or the system's own (Cinnamon, KDE Plasma, Xfce).
 #[tauri::command]
-fn add_hyprland(app: AppHandle, name: String, main_key: String, allow_third_party: bool) -> Result<u64, String> {
+fn add_desktop(app: AppHandle, name: String, kind: desktop::Kind, main_key: String, allow_third_party: bool) -> Result<u64, String> {
     let store = app.state::<Store>();
     if app.state::<Jobs>().busy(&name) {
         return Err(format!("{name} is busy with another change."));
     }
     let info = store.distro(&name);
-    let job = Job::new(&app, "hyprland", &name, &format!("Adding the Hyprland desktop to {name}")).map_err(|e| e.to_string())?;
+    let own = info.catalog_id.as_deref().and_then(catalog::get).and_then(|e| e.desktop);
+    let (title, estimate) = match (kind, &own) {
+        (desktop::Kind::Hyprland, _) => ("Installing the Hyprland desktop".to_string(), "2 to 5 minutes".to_string()),
+        (desktop::Kind::Own, Some(d)) => (format!("Installing the {} desktop", d.name), format!("{} minutes", d.minutes)),
+        (desktop::Kind::Own, None) => return Err(format!("{name} has no desktop of its own that EasyWSL can install.")),
+    };
+    let job = Job::new(&app, "desktop", &name, &format!("Adding a desktop to {name}")).map_err(|e| e.to_string())?;
     let id = job.id();
     tauri::async_runtime::spawn(async move {
         let result: Result<(), String> = async {
-            job.plan(&[("Finding your account", None), ("Installing the Hyprland desktop", Some("2 to 5 minutes"))]);
+            job.plan(&[("Finding your account", None), (&title, Some(&estimate))]);
             job.step("Finding your account");
             let user = match info.user {
                 Some(u) => u,
@@ -220,14 +232,27 @@ fn add_hyprland(app: AppHandle, name: String, main_key: String, allow_third_part
                     .filter(|u| !u.is_empty() && u != "root")
                     .ok_or("This system has no user account besides root. Create one first.")?,
             };
-            let engine = engine::prepare(&app).map_err(|e| e.to_string())?;
-            job.step("Installing the Hyprland desktop");
-            install::install_hyprland(&job, &engine, &name, &user, allow_third_party, Some(&main_key)).await?;
-            app.state::<Store>().update_distro(&name, |d| {
-                d.hyprland = true;
-                d.user = Some(user.clone());
-                d.main_key = Some(main_key.clone());
-            });
+            job.step(&title);
+            match (kind, own) {
+                (desktop::Kind::Hyprland, _) => {
+                    let engine = engine::prepare(&app).map_err(|e| e.to_string())?;
+                    install::install_hyprland(&job, &engine, &name, &user, allow_third_party, Some(&main_key)).await?;
+                    app.state::<Store>().update_distro(&name, |d| {
+                        d.hyprland = true;
+                        d.user = Some(user.clone());
+                        d.main_key = Some(main_key.clone());
+                    });
+                }
+                (desktop::Kind::Own, Some(d)) => {
+                    let linux = engine::prepare_linux(&app).map_err(|e| e.to_string())?;
+                    install::install_own_desktop(&job, &linux, &name, &user, &d).await?;
+                    app.state::<Store>().update_distro(&name, |info| {
+                        info.desktop = Some(d.id.to_string());
+                        info.user = Some(user.clone());
+                    });
+                }
+                _ => {}
+            }
             Ok(())
         }
         .await;
@@ -310,9 +335,9 @@ async fn remove_distro(app: AppHandle, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn open_desktop(app: AppHandle, name: String) {
+fn open_desktop(app: AppHandle, name: String, kind: desktop::Kind) {
     tauri::async_runtime::spawn(async move {
-        let _ = desktop::open(app.clone(), name).await;
+        let _ = desktop::open(app.clone(), name, kind).await;
         let _ = app.emit("distros-changed", ());
     });
 }
@@ -354,7 +379,7 @@ pub fn run() {
             default_location,
             check_install,
             start_install,
-            add_hyprland,
+            add_desktop,
             list_jobs,
             dismiss_job,
             open_terminal,

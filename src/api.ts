@@ -15,12 +15,26 @@ export type Readiness =
 
 export type Hyprland = "no" | "optional" | "included";
 
+/** A distro's own desktop. */
+export interface OwnDesktop {
+  id: string;
+  name: string;
+  note: string | null;
+  minutes: string;
+  sizeGb: number;
+}
+
+/** What a system gets at install: its own desktop, Hyprland, or only a terminal. */
+export type DesktopChoice = "own" | "hyprland" | "none";
+export type DesktopKind = "own" | "hyprland";
+
 export interface CatalogEntry {
   id: string;
   title: string;
   tagline: string;
   description: string;
   source: { kind: "wsl"; name: string } | { kind: "docker"; image: string } | { kind: "omarchy" };
+  desktop: OwnDesktop | null;
   hyprland: Hyprland;
   hyprlandNote: string | null;
   thirdParty: string | null;
@@ -34,6 +48,7 @@ export interface CatalogEntry {
 export interface DistroInfo {
   catalogId: string | null;
   user: string | null;
+  desktop: string | null;
   hyprland: boolean;
   mainKey: string | null;
   createdByEasywsl: boolean;
@@ -92,7 +107,7 @@ export interface InstallRequest {
   name: string;
   user: string | null;
   password: string | null;
-  hyprland: boolean;
+  desktop: DesktopChoice;
   mainKey: string | null;
   allowThirdParty: boolean;
   location: string | null;
@@ -117,8 +132,8 @@ export const api = {
   defaultLocation: (name: string) => call<string>("default_location", { name }),
   checkInstall: (request: InstallRequest) => call<string>("check_install", { request }),
   startInstall: (request: InstallRequest) => call<number>("start_install", { request }),
-  addHyprland: (name: string, mainKey: string, allowThirdParty: boolean) =>
-    call<number>("add_hyprland", { name, mainKey, allowThirdParty }),
+  addDesktop: (name: string, kind: DesktopKind, mainKey: string, allowThirdParty: boolean) =>
+    call<number>("add_desktop", { name, kind, mainKey, allowThirdParty }),
   listJobs: () => call<Job[]>("list_jobs"),
   dismissJob: (id: number) => call<void>("dismiss_job", { id }),
   openTerminal: (name: string) => call<void>("open_terminal", { name }),
@@ -127,7 +142,7 @@ export const api = {
   stop: (name: string) => call<void>("stop_distro", { name }),
   setDefault: (name: string) => call<void>("set_default", { name }),
   remove: (name: string) => call<void>("remove_distro", { name }),
-  openDesktop: (name: string) => call<void>("open_desktop", { name }),
+  openDesktop: (name: string, kind: DesktopKind) => call<void>("open_desktop", { name, kind }),
   listSessions: () => call<Session[]>("list_sessions"),
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<void>("set_settings", { settings }),
@@ -155,17 +170,17 @@ export function on<T>(event: "job" | "session" | "distros-changed", handler: (pa
 // like in the address show the setup screens.
 
 const mockCatalog: CatalogEntry[] = [
-  { id: "ubuntu", title: "Ubuntu 26.04 LTS", tagline: "The most popular Linux. A safe first choice.", description: "Ubuntu is the Linux most guides and answers online are written for, so help is easy to find. LTS means it gets updates for years.", source: { kind: "wsl", name: "Ubuntu-26.04" }, hyprland: "optional", hyprlandNote: "Ubuntu's Hyprland is older and a little less smooth than on Arch.", thirdParty: null, minutes: "3 to 5", sizeGb: 2, recommended: false, accent: "#E95420", website: "https://ubuntu.com" },
-  { id: "arch", title: "Arch Linux", tagline: "Always the newest software. Best with the Hyprland desktop.", description: "Arch updates continuously, so it gets new versions first.", source: { kind: "wsl", name: "archlinux" }, hyprland: "optional", hyprlandNote: null, thirdParty: null, minutes: "3 to 5", sizeGb: 2.5, recommended: true, accent: "#1793D1", website: "https://archlinux.org" },
-  { id: "omarchy", title: "Omarchy", tagline: "A beautiful, ready-made Hyprland desktop by DHH. Beta.", description: "Omarchy is Arch Linux with a polished Hyprland desktop.", source: { kind: "omarchy" }, hyprland: "included", hyprlandNote: "Omarchy is a Hyprland desktop; it is always included.", thirdParty: null, minutes: "10 to 20", sizeGb: 11, recommended: false, accent: "#8FBF8F", website: "https://omarchy.org" },
-  { id: "mint", title: "Linux Mint 22.3", tagline: "Familiar and calm. Built on Ubuntu.", description: "Linux Mint is known for feeling comfortable to people coming from Windows.", source: { kind: "docker", image: "linuxmintd/mint22.3-amd64" }, hyprland: "optional", hyprlandNote: "Mint has no Hyprland of its own; it comes from a community package source.", thirdParty: "Hyprland and a newer graphics driver come from two community package sources (PPAs) that are not part of Linux Mint.", minutes: "4 to 8", sizeGb: 2.5, recommended: false, accent: "#87CF3E", website: "https://linuxmint.com" },
-  { id: "debian", title: "Debian", tagline: "Rock-solid and conservative. The base of Ubuntu.", description: "Debian changes slowly and carefully.", source: { kind: "wsl", name: "Debian" }, hyprland: "no", hyprlandNote: null, thirdParty: null, minutes: "2 to 4", sizeGb: 1.5, recommended: false, accent: "#A81D33", website: "https://www.debian.org" },
+  { id: "ubuntu", title: "Ubuntu 26.04 LTS", tagline: "The most popular Linux. A safe first choice.", description: "Ubuntu is the Linux most guides and answers online are written for, so help is easy to find. LTS means it gets updates for years.", source: { kind: "wsl", name: "Ubuntu-26.04" }, desktop: { id: "xfce", name: "Xfce", note: "Ubuntu's usual desktop, GNOME, cannot run inside WSL yet. This is Xfce, the desktop of Xubuntu, the official Ubuntu flavour.", minutes: "5 to 10", sizeGb: 1 }, hyprland: "optional", hyprlandNote: "Ubuntu's Hyprland is older and a little less smooth than on Arch.", thirdParty: null, minutes: "3 to 5", sizeGb: 2, recommended: false, accent: "#E95420", website: "https://ubuntu.com" },
+  { id: "arch", title: "Arch Linux", tagline: "Always the newest software. Best with the Hyprland desktop.", description: "Arch updates continuously, so it gets new versions first.", source: { kind: "wsl", name: "archlinux" }, desktop: null, hyprland: "optional", hyprlandNote: null, thirdParty: null, minutes: "3 to 5", sizeGb: 2.5, recommended: true, accent: "#1793D1", website: "https://archlinux.org" },
+  { id: "omarchy", title: "Omarchy", tagline: "A beautiful, ready-made Hyprland desktop by DHH. Beta.", description: "Omarchy is Arch Linux with a polished Hyprland desktop.", source: { kind: "omarchy" }, desktop: null, hyprland: "included", hyprlandNote: "Omarchy is a Hyprland desktop; it is always included.", thirdParty: null, minutes: "10 to 20", sizeGb: 11, recommended: false, accent: "#8FBF8F", website: "https://omarchy.org" },
+  { id: "mint", title: "Linux Mint 22.3", tagline: "Familiar and calm. Built on Ubuntu.", description: "Linux Mint is known for feeling comfortable to people coming from Windows.", source: { kind: "docker", image: "linuxmintd/mint22.3-amd64" }, desktop: { id: "cinnamon", name: "Cinnamon", note: null, minutes: "5 to 10", sizeGb: 1 }, hyprland: "optional", hyprlandNote: "Mint has no Hyprland of its own; it comes from a community package source.", thirdParty: "Hyprland and a newer graphics driver come from two community package sources (PPAs) that are not part of Linux Mint.", minutes: "4 to 8", sizeGb: 2.5, recommended: false, accent: "#87CF3E", website: "https://linuxmint.com" },
+  { id: "debian", title: "Debian", tagline: "Rock-solid and conservative. The base of Ubuntu.", description: "Debian changes slowly and carefully.", source: { kind: "wsl", name: "Debian" }, desktop: { id: "xfce", name: "Xfce", note: null, minutes: "5 to 10", sizeGb: 1 }, hyprland: "no", hyprlandNote: null, thirdParty: null, minutes: "2 to 4", sizeGb: 1.5, recommended: false, accent: "#A81D33", website: "https://www.debian.org" },
 ];
 
 const mockState = {
   distros: [
-    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\arch", info: { catalogId: "arch", user: "me", hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: mockCatalog[1], busy: false },
-    { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true }, catalog: null, busy: false },
+    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\arch", info: { catalogId: "arch", user: "me", desktop: null, hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: mockCatalog[1], busy: false },
+    { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, desktop: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true }, catalog: null, busy: false },
   ] as Distro[],
   jobs: [] as Job[],
   settings: { installDir: null, fullScreen: true } as Settings,
@@ -178,7 +193,8 @@ function emit(event: string, detail: unknown) {
 function mockJob(request: InstallRequest): number {
   const entry = mockCatalog.find((c) => c.id === request.catalogId)!;
   const steps = [`Downloading ${entry.title}`, `Setting up your account (${request.user})`];
-  if (request.hyprland) steps.push("Installing the Hyprland desktop");
+  if (request.desktop === "hyprland") steps.push("Installing the Hyprland desktop");
+  if (request.desktop === "own" && entry.desktop) steps.push(`Installing the ${entry.desktop.name} desktop`);
   steps.push("Finishing");
   const job: Job = { id: Date.now(), kind: "install", distro: request.name, title: `Installing ${entry.title}`, steps: steps.map((t) => ({ title: t, estimate: "1 to 2 minutes", state: "pending" })), state: "running", error: null, log: "C:\\mock.log", started: Date.now() / 1000, finished: null, lastLine: null };
   mockState.jobs.push(job);
@@ -189,7 +205,7 @@ function mockJob(request: InstallRequest): number {
     if (i === steps.length) {
       job.state = "done";
       job.finished = Date.now() / 1000;
-      mockState.distros.push({ name: request.name, running: false, isDefault: false, wslVersion: 2, basePath: "", info: { catalogId: entry.id, user: request.user, hyprland: request.hyprland, mainKey: request.mainKey, createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: entry, busy: false });
+      mockState.distros.push({ name: request.name, running: false, isDefault: false, wslVersion: 2, basePath: "", info: { catalogId: entry.id, user: request.user, desktop: request.desktop === "own" ? entry.desktop?.id ?? null : null, hyprland: request.desktop === "hyprland", mainKey: request.mainKey, createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: entry, busy: false });
       emit("distros-changed", null);
     }
     emit("job", { ...job, steps: job.steps.map((s) => ({ ...s })) });

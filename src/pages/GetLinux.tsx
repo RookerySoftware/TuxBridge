@@ -1,10 +1,41 @@
 // The catalogue: Linux systems described for newcomers, and the short form that installs one.
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, ExternalLink, HardDrive, LayoutDashboard, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Clock, ExternalLink, HardDrive, LayoutDashboard, Monitor, Sparkles, SquareTerminal } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, inApp, type CatalogEntry, type InstallRequest } from "../api";
+import { api, inApp, type CatalogEntry, type DesktopChoice, type InstallRequest } from "../api";
 import { Badge, Button, Card, Dialog, Field, Monogram, Notice, Toggle, inputClass } from "../components/ui";
+
+/** The desktop a new system starts with: its own by default, Hyprland instead, or none. */
+function defaultChoice(entry: CatalogEntry): DesktopChoice {
+  if (entry.hyprland === "included") return "hyprland";
+  if (entry.desktop) return "own";
+  return entry.recommended && entry.hyprland === "optional" ? "hyprland" : "none";
+}
+
+function ChoiceCard({ selected, onSelect, icon, title, text, disabled }: {
+  selected: boolean; onSelect: () => void; icon: React.ReactNode; title: string; text: string; disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={`relative flex flex-col items-start gap-1 rounded-xl border p-3.5 text-left transition
+        focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50
+        ${selected ? "border-accent bg-accent-soft" : "border-line hover:border-accent/50"}`}
+    >
+      {selected && <Check className="absolute right-3 top-3 size-4 text-accent" />}
+      <span className="flex items-center gap-2 text-sm font-medium">
+        {icon}
+        {title}
+      </span>
+      <span className="text-xs text-muted">{text}</span>
+    </button>
+  );
+}
 
 function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onClose: () => void; onStarted: () => void }) {
   const omarchy = entry.source.kind === "omarchy";
@@ -12,7 +43,8 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
-  const [hyprland, setHyprland] = useState(entry.hyprland === "included" || entry.recommended);
+  const [choice, setChoice] = useState<DesktopChoice>(defaultChoice(entry));
+  const hyprland = choice === "hyprland";
   const [windowsKey, setWindowsKey] = useState(true);
   const [thirdParty, setThirdParty] = useState(false);
   const [setDefault, setSetDefault] = useState(false);
@@ -36,7 +68,7 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
     name,
     user: omarchy ? null : user,
     password: omarchy ? null : password,
-    hyprland: omarchy || hyprland,
+    desktop: omarchy ? "hyprland" : choice,
     mainKey: windowsKey ? "SUPER" : "ALT",
     allowThirdParty: thirdParty,
     location: locationTouched ? location : null,
@@ -90,23 +122,41 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
           </div>
         )}
 
-        {entry.hyprland !== "no" && (
-          <div className="space-y-3 rounded-xl border border-line p-4">
-            <Toggle
-              checked={omarchy || hyprland}
-              disabled={omarchy}
-              onChange={setHyprland}
-              label={
-                <span className="inline-flex items-center gap-2">
-                  <LayoutDashboard className="size-4 text-accent" /> Use the Hyprland desktop
-                </span>
-              }
-              description={
-                entry.hyprlandNote ??
-                "A modern Linux desktop with windows that arrange themselves in tiles, shown full screen in its own window. You can also add it later."
-              }
-            />
-            {(omarchy || hyprland) && !omarchy && (
+        {omarchy ? (
+          <Notice icon={<LayoutDashboard className="size-4 text-accent" />}>Omarchy is a Hyprland desktop; it comes with it.</Notice>
+        ) : (
+          <div className="space-y-3">
+            <span className="text-sm font-medium">Desktop</span>
+            <div role="radiogroup" aria-label="Desktop" className="grid gap-2 sm:grid-cols-3">
+              {entry.desktop && (
+                <ChoiceCard
+                  selected={choice === "own"}
+                  onSelect={() => setChoice("own")}
+                  icon={<Monitor className="size-4 text-accent" />}
+                  title={entry.desktop.name}
+                  text={`${entry.title}'s own desktop. Familiar, with a menu, taskbar and windows.`}
+                />
+              )}
+              {entry.hyprland !== "no" && (
+                <ChoiceCard
+                  selected={choice === "hyprland"}
+                  onSelect={() => setChoice("hyprland")}
+                  icon={<LayoutDashboard className="size-4 text-accent" />}
+                  title="Hyprland"
+                  text="A modern desktop where windows arrange themselves in tiles, driven by the keyboard."
+                />
+              )}
+              <ChoiceCard
+                selected={choice === "none"}
+                onSelect={() => setChoice("none")}
+                icon={<SquareTerminal className="size-4 text-accent" />}
+                title="None"
+                text="Just a terminal. Linux apps you install still open in their own windows."
+              />
+            </div>
+            {choice === "own" && entry.desktop?.note && <p className="text-xs text-muted">{entry.desktop.note}</p>}
+            {choice === "hyprland" && entry.hyprlandNote && <p className="text-xs text-muted">{entry.hyprlandNote}</p>}
+            {hyprland && (
               <Toggle
                 checked={windowsKey}
                 onChange={setWindowsKey}
@@ -117,6 +167,7 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
             {hyprland && entry.thirdParty && (
               <Toggle checked={thirdParty} onChange={setThirdParty} label="Allow the community package sources" description={entry.thirdParty} />
             )}
+            <p className="text-xs text-muted">You can add another desktop later.</p>
           </div>
         )}
 
@@ -151,7 +202,8 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
 
         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
           <span className="text-xs text-muted">
-            About {entry.minutes} minutes, {entry.sizeGb} GB.
+            About {entry.minutes} minutes{choice === "own" && entry.desktop ? ` plus ${entry.desktop.minutes} for the desktop` : ""},{" "}
+            {(entry.sizeGb + (choice === "own" && entry.desktop ? entry.desktop.sizeGb : 0)).toFixed(1)} GB.
           </span>
           <div className="flex gap-2">
             <Button type="button" onClick={onClose}>
@@ -198,8 +250,9 @@ export default function GetLinux({ onStarted }: { onStarted: () => void }) {
             </div>
             <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">{e.description}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {e.hyprland === "included" && <Badge tone="accent">Hyprland desktop included</Badge>}
-              {e.hyprland === "optional" && <Badge tone="accent">Hyprland desktop available</Badge>}
+              {e.desktop && <Badge tone="accent">{e.desktop.name} desktop</Badge>}
+              {e.hyprland === "included" && <Badge tone="accent">Hyprland desktop</Badge>}
+              {e.hyprland === "optional" && <Badge>Hyprland available</Badge>}
               <Badge>
                 <Clock className="size-3" /> {e.minutes} min
               </Badge>

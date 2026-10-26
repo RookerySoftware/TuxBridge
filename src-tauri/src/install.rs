@@ -20,11 +20,21 @@ pub struct Request {
     pub name: String,
     pub user: Option<String>,
     pub password: Option<String>,
-    pub hyprland: bool,
+    pub desktop: Choice,
     pub main_key: Option<String>,
     pub allow_third_party: bool,
     pub location: Option<String>,
     pub set_default: bool,
+}
+
+/// Which desktop a system gets: its own (Cinnamon, KDE Plasma, Xfce), Hyprland, or none (only a
+/// terminal).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Choice {
+    Own,
+    Hyprland,
+    None,
 }
 
 pub fn valid_name(name: &str) -> bool {
@@ -57,10 +67,14 @@ pub fn check(app: &AppHandle, req: &Request) -> Result<(catalog::Entry, PathBuf)
             return Err("Choose a password. Linux asks for it when you install software.".into());
         }
     }
-    if req.hyprland && entry.hyprland == Hyprland::No {
+    let hyprland = req.desktop == Choice::Hyprland;
+    if hyprland && entry.hyprland == Hyprland::No {
         return Err(format!("The Hyprland desktop is not available for {} yet.", entry.title));
     }
-    if req.hyprland && entry.third_party.is_some() && !req.allow_third_party {
+    if req.desktop == Choice::Own && entry.desktop.is_none() {
+        return Err(format!("{} has no desktop of its own here; choose Hyprland or none.", entry.title));
+    }
+    if hyprland && entry.third_party.is_some() && !req.allow_third_party {
         return Err("Hyprland needs the community package sources for this system; allow them, or leave Hyprland off.".into());
     }
     let store = app.state::<Store>();
@@ -102,7 +116,10 @@ pub async fn run(app: AppHandle, job: Arc<Job>, req: Request, entry: catalog::En
     let name = req.name.clone();
     let title = entry.title;
     let omarchy = entry.source == Source::Omarchy;
-    let hyprland = omarchy || req.hyprland;
+    let hyprland = omarchy || req.desktop == Choice::Hyprland;
+    let own = (req.desktop == Choice::Own && !omarchy).then(|| entry.desktop.clone()).flatten();
+    let own_step = own.as_ref().map(|d| format!("Installing the {} desktop", d.name));
+    let own_estimate = own.as_ref().map(|d| format!("{} minutes", d.minutes));
     let user = req.user.clone().unwrap_or_default();
 
     let get = format!("Downloading {title}");
@@ -118,11 +135,15 @@ pub async fn run(app: AppHandle, job: Arc<Job>, req: Request, entry: catalog::En
         if hyprland {
             plan.push(("Installing the Hyprland desktop", Some("2 to 5 minutes")));
         }
+        if let (Some(step), Some(estimate)) = (&own_step, &own_estimate) {
+            plan.push((step, Some(estimate)));
+        }
     }
     plan.push(("Finishing", None));
     job.plan(&plan);
 
     let engine = engine::prepare(&app).map_err(|e| format!("Preparing the installer did not work: {e}"))?;
+    let linux = engine::prepare_linux(&app).map_err(|e| format!("Preparing the installer did not work: {e}"))?;
     if let Some(dir) = location.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("The folder {} cannot be created: {e}", dir.display()))?;
     }
@@ -221,6 +242,10 @@ pub async fn run(app: AppHandle, job: Arc<Job>, req: Request, entry: catalog::En
                 job.step("Installing the Hyprland desktop");
                 install_hyprland(&job, &engine, &name, &user, req.allow_third_party, req.main_key.as_deref()).await?;
             }
+            if let (Some(desktop), Some(step)) = (&own, &own_step) {
+                job.step(step);
+                install_own_desktop(&job, &linux, &name, &user, desktop).await?;
+            }
         }
         Ok(())
     }
@@ -252,6 +277,7 @@ pub async fn run(app: AppHandle, job: Arc<Job>, req: Request, entry: catalog::En
         d.catalog_id = Some(entry.id.to_string());
         d.user = (!omarchy).then(|| user.clone());
         d.hyprland = hyprland;
+        d.desktop = own.as_ref().map(|o| o.id.to_string());
         d.main_key = hyprland.then(|| req.main_key.clone().unwrap_or_else(|| "SUPER".into()));
         d.created_by_easywsl = true;
         d.first_start_pending = omarchy;
@@ -275,4 +301,11 @@ pub async fn install_hyprland(job: &Job, engine: &str, name: &str, user: &str, t
         .await
         .map_err(|_| explain(job, "Setting the desktop's main key", AGAIN))?;
     Ok(())
+}
+
+/// Installs a distro's own desktop (linux/desktop-setup.sh).
+pub async fn install_own_desktop(job: &Job, linux: &str, name: &str, user: &str, desktop: &catalog::Desktop) -> Result<(), String> {
+    job.run(wsl::command(["-d", name, "-u", "root", "-e", "bash", &format!("{linux}/desktop-setup.sh"), desktop.id, user]), None)
+        .await
+        .map_err(|_| explain(job, &format!("Installing the {} desktop", desktop.name), AGAIN))
 }

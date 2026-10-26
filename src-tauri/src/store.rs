@@ -16,6 +16,8 @@ pub struct DistroInfo {
     /// The catalogue entry it was installed from.
     pub catalog_id: Option<String>,
     pub user: Option<String>,
+    /// The distro's own desktop, if installed: "cinnamon", "kde" or "xfce".
+    pub desktop: Option<String>,
     pub hyprland: bool,
     /// The Hyprland main key, "SUPER" (the Windows key) or "ALT".
     pub main_key: Option<String>,

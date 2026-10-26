@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, FolderOpen, Loader2, LayoutDashboard, MoreHorizontal, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
+  AlertTriangle, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, MoreHorizontal, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
 } from "lucide-react";
-import { api, type Distro, type Job, type Session } from "../api";
+import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
 import { Badge, Button, Card, Dialog, IconButton, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
 import JobCard from "../components/JobCard";
 
@@ -89,26 +89,45 @@ function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void
   );
 }
 
-function AddHyprlandDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
+/** The desktops a system has, the one opened by default first. */
+function desktopsOf(distro: Distro): { kind: DesktopKind; name: string }[] {
+  const list: { kind: DesktopKind; name: string }[] = [];
+  if (distro.info.desktop) {
+    const name = distro.catalog?.desktop?.name ?? distro.info.desktop.charAt(0).toUpperCase() + distro.info.desktop.slice(1);
+    list.push({ kind: "own", name });
+  }
+  if (distro.info.hyprland) list.push({ kind: "hyprland", name: "Hyprland" });
+  return list;
+}
+
+function AddDesktopDialog({ distro, kind, onClose }: { distro: Distro; kind: DesktopKind; onClose: () => void }) {
   const [windowsKey, setWindowsKey] = useState(true);
   const [thirdParty, setThirdParty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const needsThirdParty = distro.catalog?.thirdParty;
+  const hyprland = kind === "hyprland";
+  const own = distro.catalog?.desktop;
+  const needsThirdParty = hyprland ? distro.catalog?.thirdParty : null;
+  const name = hyprland ? "Hyprland" : (own?.name ?? "its own");
   return (
-    <Dialog title="Add the Hyprland desktop" onClose={onClose}>
+    <Dialog title={`Add the ${name} desktop`} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-muted">
-          Hyprland is a modern Linux desktop where windows arrange themselves in tiles. It opens full screen in its own window on
-          Windows. Installing it takes 2 to 5 minutes.
+          {hyprland
+            ? "Hyprland is a modern Linux desktop where windows arrange themselves in tiles. Installing it takes 2 to 5 minutes."
+            : `${name} is ${distro.catalog?.title ?? "this system"}'s own desktop, with a menu, a taskbar and windows. Installing it takes ${own?.minutes ?? "5 to 10"} minutes.`}{" "}
+          It opens in its own window on Windows. Your files and apps stay as they are.
         </p>
-        {distro.catalog?.hyprlandNote && <Notice>{distro.catalog.hyprlandNote}</Notice>}
-        <Toggle
-          checked={windowsKey}
-          onChange={setWindowsKey}
-          label="Use the Windows key for the desktop's shortcuts"
-          description="Recommended. Off: the Alt key instead."
-        />
+        {hyprland && distro.catalog?.hyprlandNote && <Notice>{distro.catalog.hyprlandNote}</Notice>}
+        {!hyprland && own?.note && <Notice>{own.note}</Notice>}
+        {hyprland && (
+          <Toggle
+            checked={windowsKey}
+            onChange={setWindowsKey}
+            label="Use the Windows key for the desktop's shortcuts"
+            description="Recommended. Off: the Alt key instead."
+          />
+        )}
         {needsThirdParty && (
           <Toggle checked={thirdParty} onChange={setThirdParty} label="Allow the community package sources" description={needsThirdParty} />
         )}
@@ -122,7 +141,7 @@ function AddHyprlandDialog({ distro, onClose }: { distro: Distro; onClose: () =>
             onClick={async () => {
               setBusy(true);
               try {
-                await api.addHyprland(distro.name, windowsKey ? "SUPER" : "ALT", thirdParty);
+                await api.addDesktop(distro.name, kind, windowsKey ? "SUPER" : "ALT", thirdParty);
                 onClose();
               } catch (e) {
                 setError(String(e));
@@ -130,7 +149,7 @@ function AddHyprlandDialog({ distro, onClose }: { distro: Distro; onClose: () =>
               }
             }}
           >
-            Add Hyprland
+            Add {name}
           </Button>
         </div>
       </div>
@@ -138,18 +157,81 @@ function AddHyprlandDialog({ distro, onClose }: { distro: Distro; onClose: () =>
   );
 }
 
+/** "Open" with the system's default (its desktop, else a terminal), and an arrow for the others. */
+function OpenButton({ items, disabled }: { items: { label: string; icon: React.ReactNode; onClick: () => void }[]; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [open]);
+  const [first] = items;
+  const split = items.length > 1;
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <Button variant="primary" className={split ? "rounded-r-none" : ""} icon={first.icon} disabled={disabled} onClick={first.onClick}>
+        {first.label}
+      </Button>
+      {split && (
+        <button
+          aria-label="Other ways to open"
+          aria-expanded={open}
+          disabled={disabled}
+          onClick={() => setOpen(!open)}
+          className="inline-flex h-9 items-center rounded-r-lg border-l border-black/15 bg-accent px-2 text-accent-ink transition hover:brightness-110
+            focus-visible:outline-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50"
+        >
+          <ChevronDown className="size-4" />
+        </button>
+      )}
+      {open && (
+        <div className="absolute left-0 top-10 z-20 w-60 rounded-xl border border-line bg-surface p-1 shadow-xl animate-in">
+          {items.map((i) => (
+            <button
+              key={i.label}
+              onClick={() => {
+                setOpen(false);
+                i.onClick();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-surface-2"
+            >
+              {i.icon}
+              {i.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; session?: Session; onSessionDismiss: () => void }) {
-  const [dialog, setDialog] = useState<"remove" | "hyprland" | null>(null);
+  const [dialog, setDialog] = useState<"remove" | DesktopKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const title = distro.catalog?.title ?? distro.name;
   const accent = distro.catalog?.accent ?? "#6b7280";
+  const desktops = desktopsOf(distro);
   const canAddHyprland = !distro.info.hyprland && distro.catalog?.hyprland === "optional";
+  const canAddOwn = !distro.info.desktop && !!distro.catalog?.desktop;
   const desktopBusy = session?.state === "starting" || session?.state === "running";
 
   const run = (action: () => Promise<void>) => () => {
     setError(null);
     action().catch((e) => setError(String(e)));
   };
+
+  const terminal = { label: "Terminal", icon: <SquareTerminal className="size-4" />, onClick: run(() => api.openTerminal(distro.name)) };
+  const openItems = [
+    ...desktops.map((d) => ({
+      label:
+        desktops.length > 1 ? `${d.name} desktop` : distro.info.firstStartPending && d.kind === "hyprland" ? "Set up and open" : "Open desktop",
+      icon: d.kind === "hyprland" ? <LayoutDashboard className="size-4" /> : <Monitor className="size-4" />,
+      onClick: run(() => api.openDesktop(distro.name, d.kind)),
+    })),
+    terminal,
+  ];
 
   return (
     <Card className="p-5 animate-in">
@@ -170,12 +252,18 @@ function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; ses
               <Badge tone="accent">
                 <Loader2 className="size-3 animate-spin" /> Changing
               </Badge>
+            ) : session?.state === "running" ? (
+              <Badge tone="good">● Desktop open</Badge>
             ) : distro.running ? (
               <Badge tone="good">● Running</Badge>
             ) : (
               <Badge>Stopped</Badge>
             )}
-            {distro.info.hyprland && <Badge tone="accent">Hyprland desktop</Badge>}
+            {desktops.map((d) => (
+              <Badge key={d.kind} tone="accent">
+                {d.name} desktop
+              </Badge>
+            ))}
             {distro.wslVersion === 1 && <Badge tone="warn">WSL 1</Badge>}
           </div>
         </div>
@@ -183,6 +271,12 @@ function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; ses
           items={[
             { label: "Stop", icon: <Power className="size-4" />, onClick: run(() => api.stop(distro.name)), hidden: !distro.running },
             { label: "Make default", icon: <Star className="size-4" />, onClick: run(() => api.setDefault(distro.name)), hidden: distro.isDefault },
+            {
+              label: `Add the ${distro.catalog?.desktop?.name ?? "own"} desktop`,
+              icon: <Monitor className="size-4" />,
+              onClick: () => setDialog("own"),
+              hidden: !canAddOwn,
+            },
             { label: "Add the Hyprland desktop", icon: <Sparkles className="size-4" />, onClick: () => setDialog("hyprland"), hidden: !canAddHyprland },
             { label: "Remove…", icon: <Trash2 className="size-4" />, onClick: () => setDialog("remove"), danger: true },
           ]}
@@ -210,31 +304,14 @@ function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; ses
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {distro.info.hyprland && (
-          <Button
-            variant="primary"
-            icon={<LayoutDashboard className="size-4" />}
-            disabled={distro.busy || desktopBusy}
-            onClick={run(() => api.openDesktop(distro.name))}
-          >
-            {session?.state === "running" ? "Desktop is open" : distro.info.firstStartPending ? "Set up and open" : "Open desktop"}
-          </Button>
-        )}
-        <Button
-          variant={distro.info.hyprland ? "secondary" : "primary"}
-          icon={<SquareTerminal className="size-4" />}
-          disabled={distro.busy || distro.info.firstStartPending}
-          onClick={run(() => api.openTerminal(distro.name))}
-        >
-          Terminal
-        </Button>
+        <OpenButton items={openItems} disabled={distro.busy || desktopBusy} />
         <Button icon={<FolderOpen className="size-4" />} disabled={distro.busy || distro.info.firstStartPending} onClick={run(() => api.openFiles(distro.name))}>
           Files
         </Button>
       </div>
 
       {dialog === "remove" && <RemoveDialog distro={distro} onClose={() => setDialog(null)} />}
-      {dialog === "hyprland" && <AddHyprlandDialog distro={distro} onClose={() => setDialog(null)} />}
+      {(dialog === "own" || dialog === "hyprland") && <AddDesktopDialog distro={distro} kind={dialog} onClose={() => setDialog(null)} />}
     </Card>
   );
 }
