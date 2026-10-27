@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
+  AlertTriangle, BookOpen, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
 } from "lucide-react";
 import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
 import { Badge, Button, Card, Dialog, Menu, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
 import JobCard from "../components/JobCard";
+import { guides } from "./Help";
 
 function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
   const [typed, setTyped] = useState("");
@@ -172,7 +173,7 @@ function OpenButton({ items, disabled }: { items: { label: string; icon: React.R
   );
 }
 
-function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; session?: Session; onSessionDismiss: () => void }) {
+function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Distro; session?: Session; onSessionDismiss: () => void; onHelp: (topic: string) => void }) {
   const [dialog, setDialog] = useState<"remove" | DesktopKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const title = distro.catalog?.title ?? distro.name;
@@ -243,6 +244,12 @@ function DistroCard({ distro, session, onSessionDismiss }: { distro: Distro; ses
               hidden: !canAddOwn,
             },
             { label: "Add the Hyprland desktop", icon: <Sparkles className="size-4" />, onClick: () => setDialog("hyprland"), hidden: !canAddHyprland },
+            {
+              label: `Guide to ${distro.catalog?.title.split(" ")[0] ?? "it"}`,
+              icon: <BookOpen className="size-4" />,
+              onClick: () => onHelp(distro.catalog!.id),
+              hidden: !distro.catalog || !guides.some((g) => g.id === distro.catalog!.id),
+            },
             { label: "Remove…", icon: <Trash2 className="size-4" />, onClick: () => setDialog("remove"), danger: true },
           ]}
         />
@@ -336,7 +343,7 @@ function NotResponding({ onRestarted }: { onRestarted: () => void }) {
 }
 
 export default function MySystems({
-  distros, responding, onRestarted, jobs, sessions, onDismissJob, onDismissSession, onGetLinux,
+  distros, responding, onRestarted, jobs, sessions, onDismissJob, onDismissSession, onGetLinux, onHelp,
 }: {
   distros: Distro[] | null;
   responding: boolean;
@@ -346,6 +353,7 @@ export default function MySystems({
   onDismissJob: (id: number) => void;
   onDismissSession: (distro: string) => void;
   onGetLinux: () => void;
+  onHelp: (topic: string) => void;
 }) {
   // An install shows as its job until it is done; then the system's card takes over.
   const installing = new Set(jobs.filter((j) => j.kind === "install" && j.state === "running").map((j) => j.distro));
@@ -392,7 +400,7 @@ export default function MySystems({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {shown.map((d) => (
-            <DistroCard key={d.name} distro={d} session={sessions[d.name]} onSessionDismiss={() => onDismissSession(d.name)} />
+            <DistroCard key={d.name} distro={d} session={sessions[d.name]} onSessionDismiss={() => onDismissSession(d.name)} onHelp={onHelp} />
           ))}
         </div>
       )}

@@ -52,7 +52,9 @@ system's user, mode 600), and `/usr/local/bin/docker` becomes a small script set
 `DOCKER_HOST`, `DOCKER_TLS_VERIFY` and `DOCKER_CERT_PATH` unless `DOCKER_HOST` is set already.
 A system with a docker of its own is left alone.
 
-Limitation: bind mounts are resolved in the engine's system. Windows folders (`/mnt/c/...`)
+Limitation: bind mounts are resolved in the engine's system. From Windows, `C:\...` paths (and
+the absolute Windows paths compose makes of `./dir`) are not translated as Docker Desktop
+does; `/mnt/c/...` works. Windows folders (`/mnt/c/...`)
 and named volumes work from every system; a folder in a Linux system's home does not
 (`docker run -v ~/project:/app` mounts an empty folder). Docker Desktop solves this with an API
 proxy that rewrites such paths to a shared mount under `/mnt/wsl`; doing the same is the next

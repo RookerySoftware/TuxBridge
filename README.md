@@ -17,6 +17,8 @@ Status: **pre-release, Phase 2** (see [docs/roadmap.md](docs/roadmap.md)). Next:
 - **Docker**: one button sets up the free Docker Engine in a hidden system of its own; manage
   containers, install ready-made apps (media server, cloud storage, AI chat, databases...),
   and use `docker` from PowerShell and from the Linux systems. See [docs/docker.md](docs/docker.md)
+- **Help**: guides for newcomers, from "what is Linux" to each system's basics (`help/`, in
+  Markdown, to be shared with the website)
 - Says so plainly when WSL itself stops responding, and offers to restart it
 
 The Hyprland desktop comes from [hyprland-wsl](https://github.com/ItsOverk1ll/hyprland-wsl),

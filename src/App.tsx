@@ -7,6 +7,7 @@ import MySystems from "./pages/MySystems";
 import GetLinux from "./pages/GetLinux";
 import Settings from "./pages/Settings";
 import Docker from "./pages/Docker";
+import Help from "./pages/Help";
 
 type Page = "systems" | "get" | "docker" | "help" | "settings";
 
@@ -14,20 +15,16 @@ const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[
   { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
   { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
   { page: "docker", label: "Docker", icon: <Boxes className="size-4" /> },
-  { page: "help", label: "Help", icon: <HelpCircle className="size-4" />, soon: true },
+  { page: "help", label: "Help", icon: <HelpCircle className="size-4" /> },
 ];
-
-function ComingSoon({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="max-w-xl space-y-2">
-      <h1 className="font-display text-2xl font-semibold">{title}</h1>
-      <p className="text-muted">{text}</p>
-    </div>
-  );
-}
 
 function Main({ readiness }: { readiness: Readiness }) {
   const [page, setPage] = useState<Page>("systems");
+  const [topic, setTopic] = useState<string | null>(null);
+  const help = (id: string) => {
+    setTopic(id);
+    setPage("help");
+  };
   const { distros, responding, refresh } = useDistros();
   const { jobs, dismiss } = useJobs();
   const { sessions, clear } = useSessions();
@@ -82,13 +79,12 @@ function Main({ readiness }: { readiness: Readiness }) {
             onDismissJob={dismiss}
             onDismissSession={clear}
             onGetLinux={() => setPage("get")}
+            onHelp={help}
           />
         )}
         {page === "get" && <GetLinux onStarted={() => setPage("systems")} />}
         {page === "docker" && <Docker jobs={dockerJobs} onDismissJob={dismiss} />}
-        {page === "help" && (
-          <ComingSoon title="Help" text="Guides for every system and for getting used to Linux, written for people coming from Windows. Coming soon." />
-        )}
+        {page === "help" && <Help topic={topic} onTopic={setTopic} />}
         {page === "settings" && <Settings readiness={readiness} />}
       </main>
     </div>

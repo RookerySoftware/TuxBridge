@@ -28,11 +28,15 @@ who have never used WSL, Linux or a command line. Name is a working title.
 - Next: bind mounts from a Linux system's own folders (an API proxy rewriting the paths, as
   Docker Desktop does); Docker Desktop's side is untested (not installed on the test PC)
 
-## Phase 3: help directory
+## Phase 3: help directory (started)
 
 - A beginner guide per distro and general topics (what Linux is, files between Windows and
   Linux, installing software, the Hyprland desktop), written in Markdown and shared with the
   website (Cloudflare Pages)
+- Done: the Help page (sections, search, links between guides, "Guide to ..." in each system's
+  menu) and 17 guides in `help/` (front matter: title, summary, section, order)
+- Next: pictures in the guides, the GNOME/Cinnamon/Xfce basics as guides of their own, the
+  website sharing `help/`
 
 ## Phase 4: assistant and tutorials
 
