@@ -27,7 +27,11 @@ export default function JobCard({ job, onDismiss }: { job: Job; onDismiss: () =>
         <div>
           <h3 className="font-display text-base font-semibold">{job.title}</h3>
           <p className="text-sm text-muted">
-            {done ? `${job.distro} is ready.` : failed ? "This did not finish." : `As "${job.distro}". You can keep using your PC meanwhile.`}
+            {done
+              ? job.kind === "docker" ? "Docker is on." : job.kind === "app" ? "It is running." : `${job.distro} is ready.`
+              : failed
+                ? "This did not finish."
+                : job.kind === "docker" || job.kind === "app" ? "You can keep using your PC meanwhile." : `As "${job.distro}". You can keep using your PC meanwhile.`}
           </p>
         </div>
         {!(job.state === "running") && (

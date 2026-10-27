@@ -4,7 +4,7 @@ Linux on Windows, made easy: a Windows app that installs and runs Linux systems 
 for people who have never used Linux or a command line. Each system can get a full Linux
 desktop, Hyprland, with one checkbox. *EasyWSL is a working title.*
 
-Status: **pre-release, Phase 1** (see [docs/roadmap.md](docs/roadmap.md)). Next: Docker.
+Status: **pre-release, Phase 2** (see [docs/roadmap.md](docs/roadmap.md)). Next: the help directory.
 
 ## What it does
 
@@ -14,6 +14,9 @@ Status: **pre-release, Phase 1** (see [docs/roadmap.md](docs/roadmap.md)). Next:
   in plain words; install with a name, an account and a "Use the Hyprland desktop" checkbox
 - **My systems**: open a system's terminal, its files, or its Hyprland desktop; stop it, make
   it the default, add Hyprland later, remove it; recognises systems installed without EasyWSL
+- **Docker**: one button sets up the free Docker Engine in a hidden system of its own; manage
+  containers, install ready-made apps (media server, cloud storage, AI chat, databases...),
+  and use `docker` from PowerShell and from the Linux systems. See [docs/docker.md](docs/docker.md)
 - Says so plainly when WSL itself stops responding, and offers to restart it
 
 The Hyprland desktop comes from [hyprland-wsl](https://github.com/ItsOverk1ll/hyprland-wsl),
@@ -66,5 +69,8 @@ in `src-tauri/engine/VERSION`. Commit the result.
 | `src-tauri/src/install.rs` | Installing one, step by step |
 | `src-tauri/src/desktop.rs` | Desktop sessions in EasyWSL's viewer |
 | `src-tauri/src/docker.rs` | Downloading Docker Hub images (for systems without a WSL image) |
+| `src-tauri/src/containers.rs` | Docker: the engine, the docker command, containers, installing apps |
+| `src-tauri/src/apps.rs` | The app gallery |
+| `src-tauri/linux/` | EasyWSL's scripts inside Linux: desktops, the Docker engine and client |
 | `src-tauri/src/jobs.rs` | Long tasks with steps and a log |
 | `src/` | The window (React, Tailwind) |

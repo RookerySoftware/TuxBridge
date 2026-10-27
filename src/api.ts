@@ -55,6 +55,8 @@ export interface DistroInfo {
   firstStartPending: boolean;
   installedAt: number | null;
   probed: boolean;
+  /** Its docker uses EasyWSL's engine. */
+  docker: boolean;
 }
 
 export interface Distro {
@@ -102,6 +104,66 @@ export interface Settings {
   /** null: fit the screen or window; "screen": the screen's size; "WxH": a fixed size. */
   resolution: string | null;
   frameRate: number;
+  /** Start Docker when the app opens. */
+  startDocker: boolean;
+}
+
+export interface DockerStatus {
+  /** EasyWSL's engine is set up. */
+  installed: boolean;
+  running: boolean;
+  version: string | null;
+  desktopInstalled: boolean;
+  desktopRunning: boolean;
+}
+
+export type DockerEngine = "easywsl" | "desktop";
+
+export interface Container {
+  engine: DockerEngine;
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  /** Published TCP ports on the PC. */
+  ports: number[];
+  created: string;
+  /** The gallery app it was installed as. */
+  app: string | null;
+}
+
+export interface DiskUse {
+  kind: string;
+  count: string;
+  size: string;
+  reclaimable: string;
+}
+
+export interface AppQuestion {
+  id: string;
+  label: string;
+  hint: string | null;
+  kind: "password" | "folder";
+  required: boolean;
+  default: string | null;
+}
+
+export interface GalleryApp {
+  id: string;
+  name: string;
+  category: string;
+  tagline: string;
+  description: string;
+  image: string;
+  ports: { host: number; container: number }[];
+  web: boolean;
+  questions: AppQuestion[];
+  note: string | null;
+  after: string;
+  download: string;
+  accent: string;
+  website: string;
 }
 
 export interface InstallRequest {
@@ -149,10 +211,24 @@ export const api = {
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<void>("set_settings", { settings }),
   defaultInstallDir: () => call<string>("default_install_dir"),
+  dockerStatus: () => call<DockerStatus>("docker_status"),
+  dockerEnable: () => call<number>("docker_enable"),
+  dockerStart: () => call<void>("docker_start"),
+  dockerStop: () => call<void>("docker_stop"),
+  dockerRemove: () => call<void>("docker_remove"),
+  containers: () => call<Container[]>("docker_containers"),
+  containerAction: (engine: DockerEngine, id: string, action: "start" | "stop" | "restart" | "remove") =>
+    call<void>("docker_container_action", { engine, id, action }),
+  containerLogs: (engine: DockerEngine, id: string) => call<string>("docker_logs", { engine, id }),
+  dockerDisk: () => call<DiskUse[]>("docker_disk"),
+  dockerCleanUp: (images: boolean) => call<string>("docker_clean_up", { images }),
+  apps: () => call<GalleryApp[]>("list_apps"),
+  installApp: (id: string, answers: Record<string, string>) => call<number>("install_app", { id, answers }),
+  dockerUseIn: (name: string) => call<number>("docker_use_in", { name }),
 };
 
 /** Subscribes to a backend event; returns the function that unsubscribes. */
-export function on<T>(event: "job" | "session" | "distros-changed", handler: (payload: T) => void): () => void {
+export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed", handler: (payload: T) => void): () => void {
   if (!inApp) {
     const listener = (e: Event) => handler((e as CustomEvent<T>).detail);
     window.addEventListener(`mock:${event}`, listener);
@@ -181,11 +257,12 @@ const mockCatalog: CatalogEntry[] = [
 
 const mockState = {
   distros: [
-    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\arch", info: { catalogId: "arch", user: "me", desktop: null, hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: mockCatalog[1], busy: false },
-    { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, desktop: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true }, catalog: null, busy: false },
+    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\arch", info: { catalogId: "arch", user: "me", desktop: null, hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false, docker: false }, catalog: mockCatalog[1], busy: false },
+    { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, desktop: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true, docker: false }, catalog: null, busy: false },
   ] as Distro[],
   jobs: [] as Job[],
-  settings: { installDir: null, fullScreen: true, resolution: null, frameRate: 60 } as Settings,
+  settings: { installDir: null, fullScreen: true, resolution: null, frameRate: 60, startDocker: true } as Settings,
+  docker: { installed: !new URLSearchParams(location.search).has("nodocker"), running: true, version: "29.9.2", desktopInstalled: false, desktopRunning: false } as DockerStatus,
 };
 
 function emit(event: string, detail: unknown) {
@@ -207,7 +284,7 @@ function mockJob(request: InstallRequest): number {
     if (i === steps.length) {
       job.state = "done";
       job.finished = Date.now() / 1000;
-      mockState.distros.push({ name: request.name, running: false, isDefault: false, wslVersion: 2, basePath: "", info: { catalogId: entry.id, user: request.user, desktop: request.desktop === "own" ? entry.desktop?.id ?? null : null, hyprland: request.desktop === "hyprland", mainKey: request.mainKey, createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false }, catalog: entry, busy: false });
+      mockState.distros.push({ name: request.name, running: false, isDefault: false, wslVersion: 2, basePath: "", info: { catalogId: entry.id, user: request.user, desktop: request.desktop === "own" ? entry.desktop?.id ?? null : null, hyprland: request.desktop === "hyprland", mainKey: request.mainKey, createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false, docker: false }, catalog: entry, busy: false });
       emit("distros-changed", null);
     }
     emit("job", { ...job, steps: job.steps.map((s) => ({ ...s })) });
@@ -245,6 +322,21 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
     case "get_settings": return mockState.settings;
     case "set_settings": mockState.settings = a.settings; return null;
     case "default_install_dir": return "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros";
+    case "docker_status": return mockState.docker;
+    case "docker_enable": mockState.docker = { ...mockState.docker, installed: true }; emit("docker-changed", null); return 0;
+    case "docker_start": mockState.docker = { ...mockState.docker, running: true }; return null;
+    case "docker_stop": mockState.docker = { ...mockState.docker, running: false }; return null;
+    case "docker_containers": return mockState.docker.running ? [
+      { engine: "easywsl", id: "a1", name: "jellyfin", image: "jellyfin/jellyfin:latest", state: "running", status: "Up 2 hours", ports: [8096], created: "", app: "jellyfin" },
+      { engine: "easywsl", id: "b2", name: "postgres", image: "postgres:17", state: "exited", status: "Exited (0) 3 days ago", ports: [], created: "", app: "postgres" },
+    ] : [];
+    case "docker_logs": return "Starting...\nReady.";
+    case "docker_disk": return [{ kind: "Images", count: "4", size: "1.2GB", reclaimable: "300MB (25%)" }, { kind: "Containers", count: "2", size: "12MB", reclaimable: "0B" }, { kind: "Local Volumes", count: "3", size: "800MB", reclaimable: "0B" }, { kind: "Build Cache", count: "0", size: "0B", reclaimable: "0B" }];
+    case "docker_clean_up": return "Total reclaimed space: 300MB";
+    case "list_apps": return [
+      { id: "jellyfin", name: "Jellyfin", category: "Media", tagline: "Your own Netflix for the films, shows and music on your PC.", description: "Jellyfin organises a folder of videos and music.", image: "jellyfin/jellyfin:latest", ports: [{ host: 8096, container: 8096 }], web: true, questions: [{ id: "media", label: "Your videos and music", hint: "A Windows folder.", kind: "folder", required: true, default: "%USERPROFILE%\\Videos" }], note: null, after: "Open it and follow the set-up.", download: "about a minute", accent: "#AA5CC3", website: "https://jellyfin.org" },
+      { id: "postgres", name: "PostgreSQL", category: "Databases", tagline: "The popular open-source database.", description: "PostgreSQL for development.", image: "postgres:17", ports: [{ host: 5432, container: 5432 }], web: false, questions: [{ id: "password", label: "Password", hint: "For the user postgres.", kind: "password", required: true, default: null }], note: null, after: "Connect to localhost.", download: "under a minute", accent: "#336791", website: "https://www.postgresql.org" },
+    ];
     default: return null;
   }
 }

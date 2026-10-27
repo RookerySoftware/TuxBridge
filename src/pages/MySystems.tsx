@@ -2,46 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, MoreHorizontal, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
+  AlertTriangle, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
 } from "lucide-react";
 import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
-import { Badge, Button, Card, Dialog, IconButton, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
+import { Badge, Button, Card, Dialog, Menu, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
 import JobCard from "../components/JobCard";
-
-function Menu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; hidden?: boolean }[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [open]);
-  return (
-    <div className="relative" ref={ref}>
-      <IconButton label="More" onClick={() => setOpen(!open)}>
-        <MoreHorizontal className="size-4" />
-      </IconButton>
-      {open && (
-        <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-line bg-surface p-1 shadow-xl animate-in">
-          {items.filter((i) => !i.hidden).map((i) => (
-            <button
-              key={i.label}
-              onClick={() => {
-                setOpen(false);
-                i.onClick();
-              }}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-surface-2 ${i.danger ? "text-bad" : ""}`}
-            >
-              {i.icon}
-              {i.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
   const [typed, setTyped] = useState("");

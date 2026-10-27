@@ -1,4 +1,6 @@
+mod apps;
 mod catalog;
+mod containers;
 mod desktop;
 mod docker;
 mod engine;
@@ -123,6 +125,8 @@ async fn list_distros(app: AppHandle, store: State<'_, Store>, jobs: State<'_, J
         .into_iter()
         // The throwaway distro used while unpacking a download is not one of the user's.
         .filter(|d| !d.name.ends_with("-merge"))
+        // Docker's engine runs in a system of its own, shown on the Docker page instead.
+        .filter(|d| d.name != containers::DISTRO)
         .map(|d| {
             let info = store.distro(&d.name);
             let catalog = info.catalog_id.as_deref().and_then(catalog::get);
@@ -365,6 +369,144 @@ fn default_install_dir() -> String {
     paths::default_distros_dir().to_string_lossy().into_owned()
 }
 
+// ---------------------------------------------------------------------------------------------
+// Docker (containers.rs, apps.rs)
+
+#[tauri::command]
+async fn docker_status() -> containers::Status {
+    containers::status().await
+}
+
+#[tauri::command]
+fn docker_enable(app: AppHandle, store: State<'_, Store>) -> Result<u64, String> {
+    if app.state::<Jobs>().busy(containers::DISTRO) {
+        return Err("Docker is being set up already.".into());
+    }
+    let location = store.install_dir().join(containers::DISTRO);
+    let linux = engine::prepare_linux(&app).map_err(|e| e.to_string())?;
+    let job = Job::new(&app, "docker", containers::DISTRO, "Turning on Docker").map_err(|e| e.to_string())?;
+    let id = job.id();
+    tauri::async_runtime::spawn(async move {
+        let result = containers::enable(job.clone(), location, linux).await;
+        job.finish(&result);
+        let _ = app.emit("docker-changed", ());
+    });
+    Ok(id)
+}
+
+#[tauri::command]
+async fn docker_start(app: AppHandle) -> Result<(), String> {
+    containers::start()?;
+    let ready = containers::wait_ready(std::time::Duration::from_secs(60)).await;
+    let _ = app.emit("docker-changed", ());
+    if ready { Ok(()) } else { Err("Docker did not start. Try again, or restart WSL from My systems.".into()) }
+}
+
+#[tauri::command]
+async fn docker_stop(app: AppHandle) -> Result<(), String> {
+    let result = containers::stop().await;
+    let _ = app.emit("docker-changed", ());
+    result
+}
+
+#[tauri::command]
+async fn docker_remove(app: AppHandle) -> Result<(), String> {
+    let result = containers::remove().await;
+    let _ = app.emit("docker-changed", ());
+    result
+}
+
+#[tauri::command]
+async fn docker_containers() -> Vec<containers::Container> {
+    containers::containers().await
+}
+
+#[tauri::command]
+async fn docker_container_action(app: AppHandle, engine: containers::Engine, id: String, action: String) -> Result<(), String> {
+    let result = containers::act(engine, &id, &action).await;
+    let _ = app.emit("docker-changed", ());
+    result
+}
+
+#[tauri::command]
+async fn docker_logs(engine: containers::Engine, id: String) -> Result<String, String> {
+    containers::logs(engine, &id).await
+}
+
+#[tauri::command]
+async fn docker_disk() -> Result<Vec<containers::DiskUse>, String> {
+    containers::disk_use().await
+}
+
+#[tauri::command]
+async fn docker_clean_up(app: AppHandle, images: bool) -> Result<String, String> {
+    let result = containers::clean_up(images).await;
+    let _ = app.emit("docker-changed", ());
+    result
+}
+
+/// Makes `docker` in a distro use EasyWSL's engine.
+#[tauri::command]
+fn docker_use_in(app: AppHandle, name: String) -> Result<u64, String> {
+    if app.state::<Jobs>().busy(&name) {
+        return Err(format!("{name} is busy with another change."));
+    }
+    let linux = engine::prepare_linux(&app).map_err(|e| e.to_string())?;
+    let known = app.state::<Store>().distro(&name).user;
+    let job = Job::new(&app, "docker", &name, &format!("Setting up docker in {name}")).map_err(|e| e.to_string())?;
+    let id = job.id();
+    tauri::async_runtime::spawn(async move {
+        let result: Result<(), String> = async {
+            let user = match known {
+                Some(u) => u,
+                None => wsl::output(["-d", &name, "-e", "id", "-un"])
+                    .await
+                    .map(|o| o.text.trim().to_string())
+                    .ok()
+                    .filter(|u| !u.is_empty())
+                    .ok_or("This system did not answer.")?,
+            };
+            containers::use_in(job.clone(), &name, &user, &linux).await
+        }
+        .await;
+        if result.is_ok() {
+            app.state::<Store>().update_distro(&name, |d| d.docker = true);
+        }
+        job.finish(&result);
+        let _ = app.emit("distros-changed", ());
+    });
+    Ok(id)
+}
+
+/// The gallery, with folder suggestions like %USERPROFILE%\Videos filled in for this user.
+#[tauri::command]
+fn list_apps() -> serde_json::Value {
+    let mut list = serde_json::to_value(apps::all()).unwrap_or_default();
+    let profile = dirs::home_dir().map(|h| h.to_string_lossy().into_owned()).unwrap_or_default();
+    for question in list.as_array_mut().into_iter().flatten().flat_map(|a| a["questions"].as_array_mut().into_iter().flatten()) {
+        if let Some(default) = question["default"].as_str() {
+            question["default"] = default.replace("%USERPROFILE%", &profile).into();
+        }
+    }
+    list
+}
+
+#[tauri::command]
+fn install_app(app: AppHandle, id: String, answers: std::collections::HashMap<String, String>) -> Result<u64, String> {
+    let def = apps::get(&id).ok_or("That app is not in the gallery.")?;
+    if app.state::<Jobs>().busy(def.id) {
+        return Err(format!("{} is being installed already.", def.name));
+    }
+    let job = Job::new(&app, "app", def.id, &format!("Installing {}", def.name)).map_err(|e| e.to_string())?;
+    let id = job.id();
+    tauri::async_runtime::spawn(async move {
+        let result = containers::install_app(job.clone(), def, answers).await;
+        job.finish(&result);
+        let _ = app.emit("docker-changed", ());
+    });
+    Ok(id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -372,6 +514,19 @@ pub fn run() {
         .manage(Store::load())
         .manage(Jobs::default())
         .manage(desktop::Sessions::default())
+        .setup(|app| {
+            // Docker comes back with the app (after Windows restarted, say), when it was set up
+            // and the setting is on.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if handle.state::<Store>().settings().start_docker && containers::installed() && !containers::status().await.running {
+                    if containers::start().is_ok() && containers::wait_ready(std::time::Duration::from_secs(60)).await {
+                        let _ = handle.emit("docker-changed", ());
+                    }
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             system_check,
             system_fix,
@@ -397,6 +552,19 @@ pub fn run() {
             set_settings,
             default_install_dir,
             restart_wsl,
+            docker_status,
+            docker_enable,
+            docker_start,
+            docker_stop,
+            docker_remove,
+            docker_containers,
+            docker_container_action,
+            docker_logs,
+            docker_disk,
+            docker_clean_up,
+            list_apps,
+            install_app,
+            docker_use_in,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EasyWSL");

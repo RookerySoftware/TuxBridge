@@ -3,7 +3,7 @@
 EasyWSL: Linux on Windows with as little friction and foreknowledge as possible, for people
 who have never used WSL, Linux or a command line. Name is a working title.
 
-## Phase 1: the app and WSL (in progress)
+## Phase 1: the app and WSL (done)
 
 - App shell (Tauri 2: Rust backend, React UI)
 - Setup check: Windows version, virtualization, WSL missing / old / features off / restart
@@ -12,10 +12,11 @@ who have never used WSL, Linux or a command line. Name is a working title.
   Hyprland desktop, stop, remove, add Hyprland later
 - Get Linux: a gallery of distros, described for newcomers; install with a name, an account
   and a "Use the Hyprland desktop" checkbox; progress in plain steps, a log for bug reports
-- Desktop sessions through hyprland-wsl (bundled as the engine), on a free port
-- Settings: where new systems go, full screen or windowed desktop
+- Desktops (Hyprland, GNOME, Cinnamon, Xfce) in EasyWSL's own viewer: no network, no VNC
+  (docs/desktops.md)
+- Settings: where new systems go, full screen, resolution and frame rate
 
-## Phase 2: Docker
+## Phase 2: Docker (done, see docs/docker.md)
 
 - "Turn on Docker": a small, hidden distro with the free Docker Engine; `docker` works from
   PowerShell and from every distro, all talking to that engine
@@ -24,6 +25,8 @@ who have never used WSL, Linux or a command line. Name is a working title.
 - One-click app gallery: ready-made apps (media server, cloud storage, home automation, ad
   blocking, databases, AI chat), asking only what they need, showing their address when ready
 - Docker Desktop: detected when installed, its containers shown and managed too
+- Next: bind mounts from a Linux system's own folders (an API proxy rewriting the paths, as
+  Docker Desktop does); Docker Desktop's side is untested (not installed on the test PC)
 
 ## Phase 3: help directory
 

@@ -6,13 +6,14 @@ import Setup from "./pages/Setup";
 import MySystems from "./pages/MySystems";
 import GetLinux from "./pages/GetLinux";
 import Settings from "./pages/Settings";
+import Docker from "./pages/Docker";
 
 type Page = "systems" | "get" | "docker" | "help" | "settings";
 
 const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
   { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
-  { page: "docker", label: "Docker", icon: <Boxes className="size-4" />, soon: true },
+  { page: "docker", label: "Docker", icon: <Boxes className="size-4" /> },
   { page: "help", label: "Help", icon: <HelpCircle className="size-4" />, soon: true },
 ];
 
@@ -30,7 +31,11 @@ function Main({ readiness }: { readiness: Readiness }) {
   const { distros, responding, refresh } = useDistros();
   const { jobs, dismiss } = useJobs();
   const { sessions, clear } = useSessions();
-  const working = jobs.filter((j) => j.state === "running").length;
+  // Docker's jobs (turning it on, installing apps) show on its own page.
+  const dockerJob = (j: { kind: string }) => j.kind === "docker" || j.kind === "app";
+  const systemJobs = jobs.filter((j) => !dockerJob(j));
+  const dockerJobs = jobs.filter(dockerJob);
+  const working = (list: typeof jobs) => list.filter((j) => j.state === "running").length;
 
   return (
     <div className="flex h-full">
@@ -49,7 +54,9 @@ function Main({ readiness }: { readiness: Readiness }) {
             >
               {n.icon}
               <span className="flex-1 text-left">{n.label}</span>
-              {n.page === "systems" && working > 0 && <Loader2 className="size-3.5 animate-spin text-accent" />}
+              {((n.page === "systems" && working(systemJobs) > 0) || (n.page === "docker" && working(dockerJobs) > 0)) && (
+                <Loader2 className="size-3.5 animate-spin text-accent" />
+              )}
               {n.soon && <span className="text-[10px] uppercase tracking-wide text-muted">Soon</span>}
             </button>
           ))}
@@ -70,7 +77,7 @@ function Main({ readiness }: { readiness: Readiness }) {
             distros={distros}
             responding={responding}
             onRestarted={refresh}
-            jobs={jobs}
+            jobs={systemJobs}
             sessions={sessions}
             onDismissJob={dismiss}
             onDismissSession={clear}
@@ -78,12 +85,7 @@ function Main({ readiness }: { readiness: Readiness }) {
           />
         )}
         {page === "get" && <GetLinux onStarted={() => setPage("systems")} />}
-        {page === "docker" && (
-          <ComingSoon
-            title="Docker"
-            text="Turn on Docker with one switch, see and manage your containers, and install ready-made apps in a click. Coming in the next version."
-          />
-        )}
+        {page === "docker" && <Docker jobs={dockerJobs} onDismissJob={dismiss} />}
         {page === "help" && (
           <ComingSoon title="Help" text="Guides for every system and for getting used to Linux, written for people coming from Windows. Coming soon." />
         )}

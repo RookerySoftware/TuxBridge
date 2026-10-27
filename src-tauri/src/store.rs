@@ -28,6 +28,8 @@ pub struct DistroInfo {
     pub installed_at: Option<u64>,
     /// A system EasyWSL did not make was asked once what it is (see lib.rs, probe).
     pub probed: bool,
+    /// Its `docker` uses EasyWSL's Docker engine (linux/docker-client.sh).
+    pub docker: bool,
 }
 
 impl DistroInfo {
@@ -49,11 +51,13 @@ pub struct Settings {
     pub resolution: Option<String>,
     /// The most frames a second the desktop sends (and its refresh rate where it has one).
     pub frame_rate: u32,
+    /// Start Docker's engine when the app opens, if it is set up and not running.
+    pub start_docker: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { install_dir: None, full_screen: true, resolution: None, frame_rate: 60 }
+        Settings { install_dir: None, full_screen: true, resolution: None, frame_rate: 60, start_docker: true }
     }
 }
 

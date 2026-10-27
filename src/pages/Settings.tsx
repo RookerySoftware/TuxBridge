@@ -80,6 +80,16 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
         <p className="text-xs text-muted">Changes apply the next time a desktop opens.</p>
       </Card>
 
+      <Card className="space-y-5 p-5">
+        <h2 className="font-display font-semibold">Docker</h2>
+        <Toggle
+          checked={settings.startDocker}
+          onChange={(v) => save({ ...settings, startDocker: v })}
+          label="Start Docker when EasyWSL opens"
+          description="Docker keeps running after EasyWSL closes, until Windows restarts or you stop it on the Docker page."
+        />
+      </Card>
+
       <Card className="space-y-1 p-5 text-sm text-muted">
         <h2 className="mb-2 font-display font-semibold text-ink">About</h2>
         <p>EasyWSL 0.1.0 (pre-release)</p>

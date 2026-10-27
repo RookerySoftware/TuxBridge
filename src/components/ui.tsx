@@ -1,7 +1,7 @@
 // Small building blocks used across the pages.
 
-import { type ButtonHTMLAttributes, type ReactNode, useEffect, useRef } from "react";
-import { Loader2, X } from "lucide-react";
+import { type ButtonHTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
+import { Loader2, MoreHorizontal, X } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -160,6 +160,42 @@ export function Notice({ tone = "neutral", icon, children }: { tone?: "neutral" 
     <div className={`flex gap-2.5 rounded-lg px-3.5 py-3 text-sm ${tones[tone]}`}>
       {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
       <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+/** A "More" button opening a small menu of actions. */
+export function Menu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; hidden?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <IconButton label="More" onClick={() => setOpen(!open)}>
+        <MoreHorizontal className="size-4" />
+      </IconButton>
+      {open && (
+        <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-line bg-surface p-1 shadow-xl animate-in">
+          {items.filter((i) => !i.hidden).map((i) => (
+            <button
+              key={i.label}
+              onClick={() => {
+                setOpen(false);
+                i.onClick();
+              }}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-surface-2 ${i.danger ? "text-bad" : ""}`}
+            >
+              {i.icon}
+              {i.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
