@@ -244,37 +244,86 @@ impl Input {
 /// Splits a frame into tiles and returns the ones that differ from `previous` (all of them when
 /// there is none), LZ4-compressed. `frame` and `previous` are BGRA with `stride` bytes per row.
 pub fn changed_tiles(frame: &[u8], previous: Option<&[u8]>, width: u32, height: u32, stride: usize) -> Vec<(Rect, Vec<u8>)> {
+    // Compressing a whole 4K frame takes one core about 70 ms; rows of tiles are shared out
+    // among several, in order.
+    let rows: Vec<u32> = (0..height).step_by(TILE as usize).collect();
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8).min(rows.len().max(1));
+    if threads <= 1 {
+        return rows.iter().flat_map(|&ty| tile_row(frame, previous, width, height, stride, ty)).collect();
+    }
+    let per_thread = rows.len().div_ceil(threads);
+    std::thread::scope(|scope| {
+        let parts: Vec<_> = rows
+            .chunks(per_thread)
+            .map(|chunk| scope.spawn(move || chunk.iter().flat_map(|&ty| tile_row(frame, previous, width, height, stride, ty)).collect::<Vec<_>>()))
+            .collect();
+        parts.into_iter().flat_map(|p| p.join().unwrap()).collect()
+    })
+}
+
+/// The changed tiles of one row of tiles, starting at `ty`.
+fn tile_row(frame: &[u8], previous: Option<&[u8]>, width: u32, height: u32, stride: usize, ty: u32) -> Vec<(Rect, Vec<u8>)> {
     let mut tiles = Vec::new();
     let mut pixels = Vec::new();
-    for ty in (0..height).step_by(TILE as usize) {
-        for tx in (0..width).step_by(TILE as usize) {
-            let w = TILE.min(width - tx);
-            let h = TILE.min(height - ty);
-            let row_bytes = w as usize * 4;
-            let changed = match previous {
-                None => true,
-                Some(prev) => (ty..ty + h).any(|y| {
-                    let start = y as usize * stride + tx as usize * 4;
-                    frame[start..start + row_bytes] != prev[start..start + row_bytes]
-                }),
-            };
-            if !changed {
-                continue;
-            }
-            pixels.clear();
-            for y in ty..ty + h {
+    let h = TILE.min(height - ty);
+    for tx in (0..width).step_by(TILE as usize) {
+        let w = TILE.min(width - tx);
+        let row_bytes = w as usize * 4;
+        let changed = match previous {
+            None => true,
+            Some(prev) => (ty..ty + h).any(|y| {
                 let start = y as usize * stride + tx as usize * 4;
-                pixels.extend_from_slice(&frame[start..start + row_bytes]);
-            }
-            tiles.push((Rect { x: tx, y: ty, width: w, height: h }, lz4_flex::compress_prepend_size(&pixels)));
+                frame[start..start + row_bytes] != prev[start..start + row_bytes]
+            }),
+        };
+        if !changed {
+            continue;
         }
+        pixels.clear();
+        for y in ty..ty + h {
+            let start = y as usize * stride + tx as usize * 4;
+            pixels.extend_from_slice(&frame[start..start + row_bytes]);
+        }
+        tiles.push((Rect { x: tx, y: ty, width: w, height: h }, lz4_flex::compress_prepend_size(&pixels)));
     }
     tiles
+}
+
+/// Writes a frame's tiles into a BGRA framebuffer of `width` pixels per row, decompressing them
+/// on several cores (a frame where all of 4K changed is about 2000 tiles).
+pub fn apply_tiles(framebuffer: &mut [u8], width: u32, tiles: &[(Rect, Vec<u8>)]) -> io::Result<()> {
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8);
+    if threads <= 1 || tiles.len() < 64 {
+        return tiles.iter().try_for_each(|(rect, data)| apply_tile(framebuffer, width, rect, data));
+    }
+    let decompressed: Vec<io::Result<Vec<u8>>> = std::thread::scope(|scope| {
+        let parts: Vec<_> = tiles
+            .chunks(tiles.len().div_ceil(threads))
+            .map(|chunk| {
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|(_, data)| lz4_flex::decompress_size_prepended(data).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e)))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        parts.into_iter().flat_map(|p| p.join().unwrap()).collect()
+    });
+    for ((rect, _), pixels) in tiles.iter().zip(decompressed) {
+        copy_tile(framebuffer, width, rect, &pixels?)?;
+    }
+    Ok(())
 }
 
 /// Writes a received tile into a BGRA framebuffer of `width` pixels per row.
 pub fn apply_tile(framebuffer: &mut [u8], width: u32, rect: &Rect, data: &[u8]) -> io::Result<()> {
     let pixels = lz4_flex::decompress_size_prepended(data).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    copy_tile(framebuffer, width, rect, &pixels)
+}
+
+/// Writes a tile's decompressed pixels into the framebuffer.
+fn copy_tile(framebuffer: &mut [u8], width: u32, rect: &Rect, pixels: &[u8]) -> io::Result<()> {
     let row_bytes = rect.width as usize * 4;
     if pixels.len() != row_bytes * rect.height as usize {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "tile size mismatch"));

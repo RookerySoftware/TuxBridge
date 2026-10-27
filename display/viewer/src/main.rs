@@ -23,7 +23,7 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use easywsl_protocol::{Event, Input, VERSION, apply_tile};
+use easywsl_protocol::{Event, Input, VERSION, apply_tiles};
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
@@ -31,12 +31,12 @@ use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CustomCursor, Fullscreen, Window, WindowId};
 
-/// The desktop's picture as last received: BGRA, the protocol's own order, which is also what
-/// the window wants (0RGB in a little-endian u32).
+/// The desktop's picture as last received: BGRA pixels, the protocol's own order, which is also
+/// what the window wants (0RGB in a little-endian u32).
 struct Desktop {
     width: u32,
     height: u32,
-    pixels: Vec<u8>,
+    pixels: Vec<u32>,
 }
 
 pub enum Message {
@@ -192,8 +192,8 @@ impl App {
             buffer.fill(0x0011_1318);
         } else if desktop.width as usize == ww && desktop.height as usize == wh {
             // The usual case: one desktop pixel per window pixel.
-            for (dst, src) in buffer.iter_mut().zip(desktop.pixels.chunks_exact(4)) {
-                *dst = u32::from_le_bytes([src[0], src[1], src[2], 0]);
+            for (dst, src) in buffer.iter_mut().zip(&desktop.pixels) {
+                *dst = src & 0x00ff_ffff;
             }
             self.placement = (0.0, 0.0, 1.0);
         } else {
@@ -203,14 +203,16 @@ impl App {
             let (ox, oy) = ((ww - dw.min(ww)) / 2, (wh - dh.min(wh)) / 2);
             self.placement = (ox as f64, oy as f64, scale);
             buffer.fill(0);
+            // Which desktop column each window column shows, worked out once per picture.
+            let columns: Vec<usize> = (0..dw.min(ww)).map(|x| ((x as f64 / scale) as usize).min(desktop.width as usize - 1)).collect();
+            let source = &desktop.pixels;
             for y in 0..dh.min(wh) {
                 let sy = ((y as f64 / scale) as usize).min(desktop.height as usize - 1);
-                let row = &desktop.pixels[sy * desktop.width as usize * 4..];
+                let row = &source[sy * desktop.width as usize..];
                 let start = (oy + y) * ww + ox;
-                let dst = &mut buffer[start..start + dw.min(ww)];
-                for (x, d) in dst.iter_mut().enumerate() {
-                    let sx = ((x as f64 / scale) as usize).min(desktop.width as usize - 1) * 4;
-                    *d = u32::from_le_bytes([row[sx], row[sx + 1], row[sx + 2], 0]);
+                let dst = &mut buffer[start..start + columns.len()];
+                for (d, &sx) in dst.iter_mut().zip(&columns) {
+                    *d = row[sx] & 0x00ff_ffff;
                 }
             }
         }
@@ -352,31 +354,51 @@ impl ApplicationHandler<Message> for App {
     }
 }
 
-/// Reads the agent's events into the shared picture, and tells the window when to redraw.
+/// The pixels as the protocol's BGRA bytes.
+fn as_bytes(pixels: &mut [u32]) -> &mut [u8] {
+    // SAFETY: u8 has no alignment needs and every byte pattern is valid either way.
+    unsafe { std::slice::from_raw_parts_mut(pixels.as_mut_ptr().cast::<u8>(), pixels.len() * 4) }
+}
+
+/// Reads the agent's events into the shared picture, and tells the window when to redraw. One
+/// thread reads the pipe and another decodes, so the pipe keeps flowing while a frame is
+/// decompressed.
 fn read_events(stdout: std::process::ChildStdout, desktop: Arc<Mutex<Desktop>>, proxy: EventLoopProxy<Message>) {
-    let mut reader = BufReader::with_capacity(1 << 20, stdout);
-    loop {
-        match Event::read(&mut reader) {
-            Ok(Some(Event::Hello { version, width, height })) => {
+    let (tx, rx) = std::sync::mpsc::sync_channel::<Option<Event>>(2);
+    std::thread::spawn(move || {
+        let mut reader = BufReader::with_capacity(1 << 20, stdout);
+        loop {
+            match Event::read(&mut reader) {
+                Ok(Some(event)) => {
+                    if tx.send(Some(event)).is_err() {
+                        return;
+                    }
+                }
+                Ok(None) | Err(_) => {
+                    let _ = tx.send(None);
+                    return;
+                }
+            }
+        }
+    });
+    for event in rx {
+        match event {
+            Some(Event::Hello { version, width, height }) => {
                 if version != VERSION {
                     let _ = proxy.send_event(Message::Ended(format!("the desktop agent speaks version {version}, this viewer {VERSION}")));
                     return;
                 }
                 let mut d = desktop.lock().unwrap();
-                *d = Desktop { width, height, pixels: vec![0; (width * height * 4) as usize] };
+                *d = Desktop { width, height, pixels: vec![0; (width * height) as usize] };
             }
-            Ok(Some(Event::Frame { tiles })) => {
+            Some(Event::Frame { tiles }) => {
                 let mut d = desktop.lock().unwrap();
                 let width = d.width;
-                for (rect, data) in &tiles {
-                    if apply_tile(&mut d.pixels, width, rect, data).is_err() {
-                        break;
-                    }
-                }
+                let _ = apply_tiles(as_bytes(&mut d.pixels), width, &tiles);
                 drop(d);
                 let _ = proxy.send_event(Message::Frame);
             }
-            Ok(Some(Event::Cursor { hot_x, hot_y, width, height, rgba })) => {
+            Some(Event::Cursor { hot_x, hot_y, width, height, rgba }) => {
                 let _ = proxy.send_event(Message::Cursor {
                     hot_x: hot_x as u16,
                     hot_y: hot_y as u16,
@@ -385,11 +407,11 @@ fn read_events(stdout: std::process::ChildStdout, desktop: Arc<Mutex<Desktop>>, 
                     rgba,
                 });
             }
-            Ok(Some(Event::Ended { reason })) => {
+            Some(Event::Ended { reason }) => {
                 let _ = proxy.send_event(Message::Ended(reason));
                 return;
             }
-            Ok(None) | Err(_) => {
+            None => {
                 let _ = proxy.send_event(Message::Ended(String::new()));
                 return;
             }

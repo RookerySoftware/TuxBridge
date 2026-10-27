@@ -45,6 +45,12 @@ Measured on an RTX 4060 PC (2026-10-26), limit 144:
 | Xfce (Xvfb) | 4K, whole screen animating | about 30 | Drawing on the CPU (llvmpipe) |
 | Hyprland (GPU) | 4K | 37 to 39 | Hyprland's screen copy: 25 to 35 ms to read 4K back from the GPU |
 | Hyprland (GPU) | 1440p / 1080p | about 48 | The copy: 26 / 16 ms |
+| GNOME (GPU) | 4K, whole screen changing (overview) | about 22 (was 13) | Moving ~16 MB of compressed tiles a frame through wsl.exe's pipe (~670 MB/s at best) |
+
+The agent compresses tiles on up to 8 cores (a whole 4K frame in about 8 ms instead of 70) and
+writes one frame while it compresses the next; the viewer reads the pipe on one thread and
+decompresses on several. When most of a 4K screen changes, the pipe is the limit; a better
+compression ratio, or GPU encoding, is what would raise it.
 
 Higher rates would need the picture to stay on the GPU (encoded there) instead of being read
 back for every frame. `EASYWSL_AGENT_DEBUG=1` makes the agent log the copy and send times.
@@ -59,6 +65,10 @@ distros share.
 - Docker-imported distros (Mint, CachyOS) run without systemd, so there is no system message
   bus; `desktop-start.sh` starts one, outside the session's namespace so it outlives the
   session, and checks that it answers (a socket left by a stopped bus once made Cinnamon abort).
+- Xvfb's lock file (`/tmp/.X1-lock`) is in the shared `/tmp` and stays behind when a session is
+  ended outright. WSL's process numbers are small and soon reused, so Xvfb could take the old
+  server for running and refuse to start ("Server is already active"); the script removes the
+  lock before starting and when cleaning up.
   logind and ConsoleKit stay missing (Cinnamon warns; power and session menus have nothing to
   talk to).
 - Xfce keeps its wallpaper per monitor name; Xvfb's is `screen`, so the distro's default image

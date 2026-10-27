@@ -81,6 +81,9 @@ if [ "$DESKTOP" = kde ]; then
                 kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false" || true
 fi
 
+# The usual folders (Desktop, Documents, ...), as a login would make them.
+su "$U" -c 'xdg-user-dirs-update 2> /dev/null || mkdir -p "$HOME/Desktop"'
+
 # Kali names qterminal as Xfce's terminal, which is not installed here; Ctrl+Alt+T would ask
 # which terminal to use. The user gets Xfce's own instead, whenever the named one is missing.
 if [ "$DESKTOP" = xfce ]; then
@@ -128,13 +131,18 @@ cleanup() {
         [ "$p" != $$ ] && [ "$p" != "$BASHPID" ] && [ "$(readlink "/proc/$p/ns/mnt" 2> /dev/null)" = "$own" ] &&
             kill -9 "$p" 2> /dev/null
     done
-    rm -f $STATE/pid
+    rm -f $STATE/pid /tmp/.X$DISPLAY_NUM-lock
 }
 trap cleanup EXIT
 trap 'exit 0' TERM INT HUP
 # When the viewer is killed, WSL kills this script outright, with no chance to clean up; a
 # watcher does it then.
 ( trap '' TERM INT HUP; while kill -0 $$ 2> /dev/null; do sleep 1; done; cleanup ) 3>&- 4<&- &
+
+# The X server's lock file is in the shared /tmp, and the one of a session that was ended
+# outright stays behind. Its process number is soon someone else's, and the X server would take
+# the server for still running. The socket is this namespace's own, so no other server is hurt.
+rm -f /tmp/.X$DISPLAY_NUM-lock
 
 # Only the socket in this namespace: no TCP, and no abstract socket, which lives in the network
 # all WSL distros share (and where WSLg's X server is).

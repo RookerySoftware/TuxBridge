@@ -13,11 +13,19 @@ export XDG_RUNTIME_DIR=$R DBUS_SESSION_BUS_ADDRESS=unix:path=$R/bus XDG_SESSION_
 export XDG_CURRENT_DESKTOP=ubuntu:GNOME XDG_SESSION_DESKTOP=ubuntu GNOME_SHELL_SESSION_MODE=ubuntu
 export GALLIUM_DRIVER=d3d12
 
+# The usual folders (Desktop, Documents, ...), as a login would make them; GNOME's desktop icons
+# restart every few seconds without a Desktop folder.
+xdg-user-dirs-update 2> /dev/null || mkdir -p "$HOME/Desktop"
+
 # Windows' scaling for GNOME's text. No lock screen: it needs GNOME's login manager, which is not
 # there, and GNOME would only show a notice saying so; Windows' own lock covers the viewer.
 gsettings set org.gnome.desktop.interface text-scaling-factor "$SCALE"
 gsettings set org.gnome.desktop.lockdown disable-lock-screen true
 gsettings set org.gnome.desktop.screensaver lock-enabled false
+# WSL's own mounts (the Windows drives, WSLg's) would each show as a drive in the dock and on the
+# desktop; the Windows drives are in the file manager's sidebar anyway.
+gsettings set org.gnome.shell.extensions.dash-to-dock show-mounts false 2> /dev/null
+gsettings set org.gnome.shell.extensions.ding show-volumes false 2> /dev/null
 
 # The virtual monitor refreshes at the frame rate the viewer gets.
 gnome-shell --headless --virtual-monitor "$SIZE@$FPS" --mode=ubuntu >> "$LOG" 2>&1 &

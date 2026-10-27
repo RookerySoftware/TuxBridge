@@ -11,7 +11,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use easywsl_protocol::{Event, Input, apply_tile};
+use easywsl_protocol::{Event, Input, apply_tiles};
 
 fn letter(c: char) -> Option<u32> {
     let row = |s: &str, start: u32| s.find(c).map(|i| start + i as u32);
@@ -59,9 +59,7 @@ fn main() {
                         let bytes: usize = tiles.iter().map(|(_, d)| d.len() + 20).sum();
                         received.fetch_add(bytes as u64, std::sync::atomic::Ordering::Relaxed);
                         let w = p.0;
-                        for (rect, data) in &tiles {
-                            let _ = apply_tile(&mut p.2, w, rect, data);
-                        }
+                        let _ = apply_tiles(&mut p.2, w, &tiles);
                         p.3 += 1;
                     }
                     Event::Cursor { width, height, .. } => println!("pointer shape {width}x{height}"),
