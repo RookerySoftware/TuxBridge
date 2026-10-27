@@ -672,6 +672,255 @@ pub async fn logs(engine: Engine, id: &str) -> Result<String, String> {
     Ok(text)
 }
 
+// ------------------------------------------------------------------------------------------
+// Updating a container: the newest version of its image, the same settings and data
+
+/// The `docker run` arguments that make this container again (from `docker container inspect`),
+/// leaving out what came from its image (`docker image inspect` of the old image), so the new
+/// image's own defaults apply: an image's ENV like its version number must not carry over.
+fn run_args(c: &serde_json::Value, image: &serde_json::Value) -> Vec<String> {
+    use serde_json::Value;
+    let config = &c["Config"];
+    let host = &c["HostConfig"];
+    let theirs = &image["Config"];
+    let strings = |v: &Value| -> Vec<String> { v.as_array().into_iter().flatten().filter_map(|s| s.as_str().map(String::from)).collect() };
+    let text = |v: &Value| v.as_str().unwrap_or("").to_string();
+    let mut args: Vec<String> = vec!["--name".into(), text(&c["Name"]).trim_start_matches('/').to_string()];
+    let mut add = |flag: &str, value: String| {
+        args.push(flag.into());
+        args.push(value);
+    };
+
+    let own_env = strings(&theirs["Env"]);
+    for e in strings(&config["Env"]).into_iter().filter(|e| !own_env.contains(e)) {
+        add("-e", e);
+    }
+    let own_labels = theirs["Labels"].as_object();
+    for (k, v) in config["Labels"].as_object().into_iter().flatten() {
+        if own_labels.and_then(|l| l.get(k)) != Some(v) {
+            add("--label", format!("{k}={}", v.as_str().unwrap_or("")));
+        }
+    }
+    for (key, flag) in [("User", "--user"), ("WorkingDir", "--workdir"), ("StopSignal", "--stop-signal"), ("Domainname", "--domainname")] {
+        let mine = text(&config[key]);
+        if !mine.is_empty() && mine != text(&theirs[key]) {
+            add(flag, mine);
+        }
+    }
+    // Docker names a container's host after its id unless told otherwise.
+    let hostname = text(&config["Hostname"]);
+    if !hostname.is_empty() && !text(&c["Id"]).starts_with(&hostname) {
+        add("--hostname", hostname);
+    }
+
+    for m in c["Mounts"].as_array().into_iter().flatten() {
+        let ro = if m["RW"].as_bool() == Some(false) { ":ro" } else { "" };
+        let target = text(&m["Destination"]);
+        match m["Type"].as_str() {
+            Some("volume") => add("-v", format!("{}:{target}{ro}", text(&m["Name"]))),
+            Some("bind") => add("-v", format!("{}:{target}{ro}", text(&m["Source"]))),
+            Some("tmpfs") => add("--tmpfs", target),
+            _ => {}
+        }
+    }
+    for (port, bindings) in host["PortBindings"].as_object().into_iter().flatten() {
+        for b in bindings.as_array().into_iter().flatten() {
+            let (ip, outside) = (text(&b["HostIp"]), text(&b["HostPort"]));
+            add("-p", match (ip.is_empty(), outside.is_empty()) {
+                (_, true) => port.clone(),
+                (true, false) => format!("{outside}:{port}"),
+                (false, false) => format!("{ip}:{outside}:{port}"),
+            });
+        }
+    }
+    let restart = text(&host["RestartPolicy"]["Name"]);
+    if !restart.is_empty() && restart != "no" {
+        let tries = host["RestartPolicy"]["MaximumRetryCount"].as_u64().unwrap_or(0);
+        add("--restart", if restart == "on-failure" && tries > 0 { format!("on-failure:{tries}") } else { restart });
+    }
+    let network = text(&host["NetworkMode"]);
+    if !network.is_empty() && network != "default" && network != "bridge" {
+        add("--network", network);
+    }
+    for (key, flag) in [("CapAdd", "--cap-add"), ("CapDrop", "--cap-drop"), ("ExtraHosts", "--add-host"), ("Dns", "--dns"), ("SecurityOpt", "--security-opt"), ("GroupAdd", "--group-add")] {
+        for v in strings(&host[key]) {
+            add(flag, v);
+        }
+    }
+    for d in host["Devices"].as_array().into_iter().flatten() {
+        add("--device", format!("{}:{}:{}", text(&d["PathOnHost"]), text(&d["PathInContainer"]), text(&d["CgroupPermissions"])));
+    }
+    for (k, v) in host["Sysctls"].as_object().into_iter().flatten() {
+        add("--sysctl", format!("{k}={}", v.as_str().unwrap_or("")));
+    }
+    if let Some(n) = host["Memory"].as_u64().filter(|n| *n > 0) {
+        add("--memory", n.to_string());
+    }
+    if let Some(n) = host["NanoCpus"].as_u64().filter(|n| *n > 0) {
+        add("--cpus", format!("{}", n as f64 / 1e9));
+    }
+    if let Some(n) = host["ShmSize"].as_u64().filter(|n| *n > 0 && *n != 64 * 1024 * 1024) {
+        add("--shm-size", n.to_string());
+    }
+    for (key, flag) in [("PidMode", "--pid"), ("Runtime", "--runtime")] {
+        let v = text(&host[key]);
+        if !v.is_empty() && v != "runc" {
+            add(flag, v);
+        }
+    }
+    for (on, flag) in [
+        (host["Privileged"].as_bool(), "--privileged"),
+        (host["Init"].as_bool(), "--init"),
+        (host["PublishAllPorts"].as_bool(), "-P"),
+        (host["ReadonlyRootfs"].as_bool(), "--read-only"),
+        (config["Tty"].as_bool(), "-t"),
+        (config["OpenStdin"].as_bool(), "-i"),
+    ] {
+        if on == Some(true) {
+            args.push(flag.into());
+        }
+    }
+
+    // The command: an entrypoint of its own replaces the image's, and with it the image's command.
+    let entrypoint = strings(&config["Entrypoint"]);
+    let cmd = strings(&config["Cmd"]);
+    let mut tail = Vec::new();
+    if entrypoint != strings(&theirs["Entrypoint"]) {
+        args.push("--entrypoint".into());
+        args.push(entrypoint.first().cloned().unwrap_or_default());
+        tail.extend(entrypoint.into_iter().skip(1));
+        tail.extend(cmd);
+    } else if cmd != strings(&theirs["Cmd"]) {
+        tail = cmd;
+    }
+    args.push(text(&config["Image"]));
+    args.extend(tail);
+    args
+}
+
+pub(crate) async fn inspect(engine: Engine, what: &str, id: &str) -> Result<serde_json::Value, String> {
+    let out = run(engine, &[what, "inspect", id], Duration::from_secs(20)).await?;
+    serde_json::from_str::<serde_json::Value>(&out)
+        .ok()
+        .and_then(|v| v.as_array().and_then(|a| a.first().cloned()))
+        .ok_or_else(|| "Docker gave no details about it.".to_string())
+}
+
+/// Downloads the newest version of a container's image and, when there is one, makes the
+/// container again from it with the same settings, ports and data (its volumes and folders).
+/// If the new one does not start, the old one is put back as it was.
+pub async fn update(job: Arc<Job>, engine: Engine, id: &str) -> Result<(), String> {
+    if !valid_id(id) {
+        return Err("That is not a container.".into());
+    }
+    let c = inspect(engine, "container", id).await?;
+    let name = c["Name"].as_str().unwrap_or("").trim_start_matches('/').to_string();
+    let image = c["Config"]["Image"].as_str().unwrap_or("").to_string();
+    let old_image = c["Image"].as_str().unwrap_or("").to_string();
+    if image.contains("@sha256:") || image.starts_with("sha256:") {
+        return Err(format!("{name} was started from one fixed version of its image ({image}), which has no newer version."));
+    }
+
+    if c["HostConfig"]["AutoRemove"].as_bool() == Some(true) {
+        return Err(format!("{name} was started with --rm, so Docker deletes it when it stops. Start it again with docker run to get the newest version."));
+    }
+    let labels = &c["Config"]["Labels"];
+    if let Some(project) = labels["com.docker.compose.project"].as_str() {
+        return update_compose(&job, engine, project, labels).await;
+    }
+
+    // "Starting it again" is added only when there is a newer version.
+    job.plan(&[("Downloading the newest version", Some("a minute or two"))]);
+    job.step("Downloading the newest version");
+    let mut cmd = docker(engine);
+    cmd.args(["pull", &image]);
+    job.run(cmd, None).await.map_err(|_| {
+        let tail = job.log_tail();
+        if tail.contains("no space left") {
+            "The drive is full. Free a few GB and try again.".to_string()
+        } else if tail.contains("pull access denied") || tail.contains("not found") {
+            format!("{image} cannot be downloaded (it may have been made on this PC, or be private), so it has no update here.")
+        } else {
+            format!("Downloading {image} did not work. {NET}")
+        }
+    })?;
+    let new_image = inspect(engine, "image", &image).await?["Id"].as_str().unwrap_or("").to_string();
+    if new_image == old_image {
+        job.step("It has the newest version already");
+        return Ok(());
+    }
+
+    job.step("Starting it again");
+    job.log_line(&format!("recreating {name} from {image}"));
+    recreate(engine, &c).await.inspect_err(|e| job.log_line(e))
+}
+
+/// Makes a container (from `docker container inspect`) again from the image its name points to
+/// now, with the same settings; on failure the old one is put back.
+pub(crate) async fn recreate(engine: Engine, c: &serde_json::Value) -> Result<(), String> {
+    let id = c["Id"].as_str().unwrap_or("");
+    let name = c["Name"].as_str().unwrap_or("").trim_start_matches('/').to_string();
+    let old_image = c["Image"].as_str().unwrap_or("");
+    let running = c["State"]["Running"].as_bool() == Some(true);
+    let mut args = vec![if running { "run".to_string() } else { "create".to_string() }];
+    if running {
+        args.push("-d".into());
+    }
+    let old = inspect(engine, "image", old_image).await.unwrap_or_default();
+    args.extend(run_args(c, &old));
+
+    let kept = format!("{name}-before-update");
+    let _ = run(engine, &["rm", "-f", &kept], Duration::from_secs(30)).await;
+    if running {
+        run(engine, &["stop", id], Duration::from_secs(120)).await?;
+    }
+    run(engine, &["rename", id, &kept], Duration::from_secs(30)).await?;
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    match run(engine, &refs, Duration::from_secs(120)).await {
+        Ok(_) => {
+            let _ = run(engine, &["rm", &kept], Duration::from_secs(60)).await;
+            // The old version, now unused; kept if another container still uses it.
+            let _ = run(engine, &["image", "rm", old_image], Duration::from_secs(60)).await;
+            Ok(())
+        }
+        Err(e) => {
+            let _ = run(engine, &["rm", "-f", &name], Duration::from_secs(30)).await;
+            let _ = run(engine, &["rename", &kept, &name], Duration::from_secs(30)).await;
+            if running {
+                let _ = run(engine, &["start", &name], Duration::from_secs(60)).await;
+            }
+            Err(format!("The new version did not start, so {name} was put back as it was: {e}"))
+        }
+    }
+}
+
+/// A container from a Compose file is updated with Compose, which knows all its settings.
+async fn update_compose(job: &Job, engine: Engine, project: &str, labels: &serde_json::Value) -> Result<(), String> {
+    let files: Vec<String> = labels["com.docker.compose.project.config_files"].as_str().unwrap_or("").split(',').filter(|f| !f.is_empty()).map(String::from).collect();
+    let dir = labels["com.docker.compose.project.working_dir"].as_str().unwrap_or("").to_string();
+    let service = labels["com.docker.compose.service"].as_str().unwrap_or("").to_string();
+    if files.is_empty() || !files.iter().all(|f| Path::new(f).is_file()) || !Path::new(&dir).is_dir() {
+        return Err(format!(
+            "This container belongs to the Docker Compose project {project}, started from {}. Update it there with: docker compose pull, then docker compose up -d",
+            if dir.is_empty() { "a Linux system" } else { &dir }
+        ));
+    }
+    job.plan(&[("Downloading the newest version", Some("a minute or two")), ("Starting it again", None)]);
+    let compose = |verb: &[&str]| {
+        let mut cmd = docker(engine);
+        cmd.current_dir(&dir).args(["compose", "-p", project]);
+        for f in &files {
+            cmd.arg("-f").arg(f);
+        }
+        cmd.args(verb).arg(&service);
+        cmd
+    };
+    job.step("Downloading the newest version");
+    job.run(compose(&["pull"]), None).await.map_err(|_| format!("Downloading the newest version did not work. {NET}"))?;
+    job.step("Starting it again");
+    job.run(compose(&["up", "-d", "--no-deps"]), None).await.map_err(|_| "Compose could not start the new version; its log has the details.".to_string())
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiskUse {
@@ -810,6 +1059,39 @@ mod tests {
     fn labels() {
         assert_eq!(label("a=b,easywsl.app=jellyfin,c=d", "easywsl.app").as_deref(), Some("jellyfin"));
         assert_eq!(label("maintainer=x", "easywsl.app"), None);
+    }
+
+    #[test]
+    fn run_args_keep_settings_but_not_the_images_defaults() {
+        let image = serde_json::json!({ "Config": {
+            "Env": ["PATH=/usr/bin", "APP_VERSION=1.0"], "Labels": { "maintainer": "x" },
+            "Entrypoint": ["/init"], "Cmd": ["serve"], "User": "", "WorkingDir": "/app",
+        }});
+        let container = serde_json::json!({
+            "Id": "0123456789abcdef", "Name": "/jellyfin",
+            "Config": {
+                "Hostname": "0123456789ab", "Image": "jellyfin/jellyfin:latest",
+                "Env": ["PATH=/usr/bin", "APP_VERSION=1.0", "TZ=Europe/Berlin"],
+                "Labels": { "maintainer": "x", "easywsl.app": "jellyfin" },
+                "Entrypoint": ["/init"], "Cmd": ["serve", "--fast"], "User": "", "WorkingDir": "/app",
+            },
+            "HostConfig": {
+                "PortBindings": { "8096/tcp": [{ "HostIp": "", "HostPort": "8097" }] },
+                "RestartPolicy": { "Name": "unless-stopped", "MaximumRetryCount": 0 },
+                "NetworkMode": "bridge", "ShmSize": 67108864,
+            },
+            "Mounts": [
+                { "Type": "volume", "Name": "easywsl-jellyfin-config", "Destination": "/config", "RW": true },
+                { "Type": "bind", "Source": "/mnt/c/Users/me/Videos", "Destination": "/media", "RW": false },
+            ],
+        });
+        let args = run_args(&container, &image).join(" ");
+        assert_eq!(
+            args,
+            "--name jellyfin -e TZ=Europe/Berlin --label easywsl.app=jellyfin \
+             -v easywsl-jellyfin-config:/config -v /mnt/c/Users/me/Videos:/media:ro -p 8097:8096/tcp \
+             --restart unless-stopped jellyfin/jellyfin:latest serve --fast"
+        );
     }
 
     #[test]

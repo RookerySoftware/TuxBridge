@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, BookOpen, ChevronDown, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
+  AlertTriangle, BookOpen, ChevronDown, Download, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
 } from "lucide-react";
 import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
 import { Badge, Button, Card, Dialog, Menu, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
@@ -176,6 +176,7 @@ function OpenButton({ items, disabled }: { items: { label: string; icon: React.R
 function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Distro; session?: Session; onSessionDismiss: () => void; onHelp: (topic: string) => void }) {
   const [dialog, setDialog] = useState<"remove" | DesktopKind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const title = distro.catalog?.title ?? distro.name;
   const accent = distro.catalog?.accent ?? "#6b7280";
   const desktops = desktopsOf(distro);
@@ -185,8 +186,13 @@ function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Dis
 
   const run = (action: () => Promise<void>) => () => {
     setError(null);
+    setNotice(null);
     action().catch((e) => setError(String(e)));
   };
+  const update = run(async () => {
+    const job = await api.updateSystem(distro.name);
+    if (job === null) setNotice("Omarchy updates with its own tool, which opened in a terminal window. Follow it there.");
+  });
 
   const terminal = { label: "Terminal", icon: <SquareTerminal className="size-4" />, onClick: run(() => api.openTerminal(distro.name)) };
   const openItems = [
@@ -235,6 +241,7 @@ function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Dis
         </div>
         <Menu
           items={[
+            { label: "Update", icon: <Download className="size-4" />, onClick: update, hidden: distro.busy || distro.info.firstStartPending },
             { label: "Stop", icon: <Power className="size-4" />, onClick: run(() => api.stop(distro.name)), hidden: !distro.running },
             { label: "Make default", icon: <Star className="size-4" />, onClick: run(() => api.setDefault(distro.name)), hidden: distro.isDefault },
             {
@@ -272,6 +279,11 @@ function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Dis
       {error && (
         <div className="mt-4">
           <Notice tone="bad">{error}</Notice>
+        </div>
+      )}
+      {notice && (
+        <div className="mt-4">
+          <Notice>{notice}</Notice>
         </div>
       )}
 

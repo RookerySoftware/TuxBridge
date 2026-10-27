@@ -22,6 +22,8 @@ it as an app store for the terminal.
 | Remove it | `sudo apt remove firefox` | `sudo pacman -Rs firefox` |
 | See what is installed | `apt list --installed` | `pacman -Q` |
 
+**Update** in the system's **⋯** menu in EasyWSL does "update everything" for you.
+
 `apt update` refreshes the list of what is available; `apt upgrade` installs the new versions.
 On Arch, always update everything (`-Syu`) before installing: installing one new program on an
 old system can break it.

@@ -29,7 +29,7 @@ function Main({ readiness }: { readiness: Readiness }) {
   const { jobs, dismiss } = useJobs();
   const { sessions, clear } = useSessions();
   // Docker's jobs (turning it on, installing apps) show on its own page.
-  const dockerJob = (j: { kind: string }) => j.kind === "docker" || j.kind === "app";
+  const dockerJob = (j: { kind: string }) => j.kind === "docker" || j.kind === "app" || j.kind === "container-update";
   const systemJobs = jobs.filter((j) => !dockerJob(j));
   const dockerJobs = jobs.filter(dockerJob);
   const working = (list: typeof jobs) => list.filter((j) => j.state === "running").length;

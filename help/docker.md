@@ -28,6 +28,9 @@ manager, databases. **Install** asks only what the app needs (a password, a fold
 it and starts it. Its card in **Containers** then has **Open**, which opens it in your browser
 at an address like `http://localhost:8096`.
 
+- **Update** (in a container's **⋯** menu) downloads the newest version of its image and starts
+  it again with the same settings and data. If the new version does not start, the old one is
+  put back. Containers from a Compose file are updated with Compose.
 - An app's data is kept in Docker **volumes**. Removing the app keeps its data, so installing it
   again picks up where it left off.
 - Apps are reachable from this PC only. Reaching them from your phone needs more set-up.

@@ -219,11 +219,15 @@ export const api = {
   containers: () => call<Container[]>("docker_containers"),
   containerAction: (engine: DockerEngine, id: string, action: "start" | "stop" | "restart" | "remove") =>
     call<void>("docker_container_action", { engine, id, action }),
+  /** Updates a container to the newest version of its image; returns the job. */
+  updateContainer: (engine: DockerEngine, id: string, name: string) => call<number>("docker_update", { engine, id, name }),
   containerLogs: (engine: DockerEngine, id: string) => call<string>("docker_logs", { engine, id }),
   dockerDisk: () => call<DiskUse[]>("docker_disk"),
   dockerCleanUp: (images: boolean) => call<string>("docker_clean_up", { images }),
   apps: () => call<GalleryApp[]>("list_apps"),
   installApp: (id: string, answers: Record<string, string>) => call<number>("install_app", { id, answers }),
+  /** Updates a system's programs: the job, or null when its own tool opened in a terminal (Omarchy). */
+  updateSystem: (name: string) => call<number | null>("update_system", { name }),
   dockerUseIn: (name: string) => call<number>("docker_use_in", { name }),
 };
 
@@ -330,6 +334,8 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       { engine: "easywsl", id: "a1", name: "jellyfin", image: "jellyfin/jellyfin:latest", state: "running", status: "Up 2 hours", ports: [8096], created: "", app: "jellyfin" },
       { engine: "easywsl", id: "b2", name: "postgres", image: "postgres:17", state: "exited", status: "Exited (0) 3 days ago", ports: [], created: "", app: "postgres" },
     ] : [];
+    case "docker_update": return 0;
+    case "update_system": return 0;
     case "docker_logs": return "Starting...\nReady.";
     case "docker_disk": return [{ kind: "Images", count: "4", size: "1.2GB", reclaimable: "300MB (25%)" }, { kind: "Containers", count: "2", size: "12MB", reclaimable: "0B" }, { kind: "Local Volumes", count: "3", size: "800MB", reclaimable: "0B" }, { kind: "Build Cache", count: "0", size: "0B", reclaimable: "0B" }];
     case "docker_clean_up": return "Total reclaimed space: 300MB";

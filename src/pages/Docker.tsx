@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
-  Boxes, Brush, ExternalLink, FileText, Loader2, Play, Plus, Power, RotateCw, Square, SquareTerminal, Trash2,
+  Boxes, Brush, Download, ExternalLink, FileText, Loader2, Play, Plus, Power, RotateCw, Square, SquareTerminal, Trash2,
 } from "lucide-react";
 import { api, inApp, on, type Container, type DiskUse, type Distro, type DockerStatus, type GalleryApp, type Job } from "../api";
 import { Badge, Button, Card, Dialog, Field, IconButton, Menu, Monogram, Notice, Toggle, inputClass } from "../components/ui";
@@ -365,7 +365,7 @@ function RemoveContainerDialog({ container, onClose }: { container: Container; o
   );
 }
 
-function ContainerRow({ container, app }: { container: Container; app: GalleryApp | undefined }) {
+function ContainerRow({ container, app, updating }: { container: Container; app: GalleryApp | undefined; updating: boolean }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"logs" | "remove" | null>(null);
@@ -379,6 +379,14 @@ function ContainerRow({ container, app }: { container: Container; app: GalleryAp
       setError(String(e));
     }
     setBusy(null);
+  };
+  const update = async () => {
+    setError(null);
+    try {
+      await api.updateContainer(container.engine, container.id, container.name);
+    } catch (e) {
+      setError(String(e));
+    }
   };
   // Web pages open in the browser; a database's port is only shown.
   const web = app ? app.web : true;
@@ -398,6 +406,11 @@ function ContainerRow({ container, app }: { container: Container; app: GalleryAp
             <span className={`size-2 rounded-full ${running ? "bg-good" : container.state === "restarting" ? "bg-warn" : "bg-line"}`} aria-hidden />
             <span className="text-xs text-muted">{container.status}</span>
             {container.engine === "desktop" && <Badge>Docker Desktop</Badge>}
+            {updating && (
+              <Badge tone="accent">
+                <Loader2 className="size-3 animate-spin" /> Updating
+              </Badge>
+            )}
           </div>
           <div className="truncate text-xs text-muted" title={container.image}>
             {app ? `${container.name} · ` : ""}
@@ -418,19 +431,20 @@ function ContainerRow({ container, app }: { container: Container; app: GalleryAp
             ),
           )}
         {running ? (
-          <IconButton label="Stop" onClick={() => act("stop")} disabled={!!busy}>
+          <IconButton label="Stop" onClick={() => act("stop")} disabled={!!busy || updating}>
             {busy === "stop" ? <Loader2 className="size-4 animate-spin" /> : <Square className="size-4" />}
           </IconButton>
         ) : (
-          <IconButton label="Start" onClick={() => act("start")} disabled={!!busy}>
+          <IconButton label="Start" onClick={() => act("start")} disabled={!!busy || updating}>
             {busy === "start" ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
           </IconButton>
         )}
         <Menu
           items={[
-            { label: "Restart", icon: <RotateCw className="size-4" />, onClick: () => act("restart"), hidden: !running },
+            { label: "Update", icon: <Download className="size-4" />, onClick: update, hidden: updating },
+            { label: "Restart", icon: <RotateCw className="size-4" />, onClick: () => act("restart"), hidden: !running || updating },
             { label: "Show its log", icon: <FileText className="size-4" />, onClick: () => setDialog("logs") },
-            { label: "Remove", icon: <Trash2 className="size-4" />, onClick: () => setDialog("remove"), danger: true },
+            { label: "Remove", icon: <Trash2 className="size-4" />, onClick: () => setDialog("remove"), danger: true, hidden: updating },
           ]}
         />
       </div>
@@ -631,7 +645,12 @@ export default function Docker({ jobs, onDismissJob }: { jobs: Job[]; onDismissJ
             ) : (
               <div className="space-y-2.5">
                 {containers.map((c) => (
-                  <ContainerRow key={`${c.engine}-${c.id}`} container={c} app={c.engine === "easywsl" ? apps.find((a) => a.id === c.app) : undefined} />
+                  <ContainerRow
+                    key={`${c.engine}-${c.id}`}
+                    container={c}
+                    app={c.engine === "easywsl" ? apps.find((a) => a.id === c.app) : undefined}
+                    updating={jobs.some((j) => j.kind === "container-update" && j.state === "running" && j.distro === `container ${c.name}`)}
+                  />
                 ))}
               </div>
             ))}

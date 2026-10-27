@@ -279,18 +279,81 @@ fn dismiss_job(jobs: State<'_, Jobs>, id: u64) {
     jobs.dismiss(id);
 }
 
-#[tauri::command]
-fn open_terminal(name: String) -> Result<(), String> {
+/// A terminal window in a distro, in the home folder; with `script`, running that bash script
+/// first and then staying open.
+fn terminal(name: &str, script: Option<&str>) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
-    let terminal = dirs::data_local_dir().map(|d| d.join(r"Microsoft\WindowsApps\wt.exe")).filter(|p| p.exists());
-    let result = match terminal {
-        Some(wt) => std::process::Command::new(wt).args(["-w", "new", "wsl.exe", "-d", &name, "--cd", "~"]).spawn(),
-        None => std::process::Command::new(wsl::exe())
-            .args(["-d", &name, "--cd", "~"])
-            .creation_flags(wsl::CREATE_NEW_CONSOLE)
-            .spawn(),
+    let mut args: Vec<String> = ["-d", name, "--cd", "~"].map(String::from).to_vec();
+    if let Some(script) = script {
+        args.extend(["-e", "bash", "-lc", &format!("{script}; exec bash -l")].map(String::from));
+    }
+    let wt = dirs::data_local_dir().map(|d| d.join(r"Microsoft\WindowsApps\wt.exe")).filter(|p| p.exists());
+    let result = match wt {
+        Some(wt) => std::process::Command::new(wt).args(["-w", "new", "wsl.exe"]).args(&args).spawn(),
+        None => std::process::Command::new(wsl::exe()).args(&args).creation_flags(wsl::CREATE_NEW_CONSOLE).spawn(),
     };
     result.map(|_| ()).map_err(|e| format!("The terminal did not open: {e}"))
+}
+
+#[tauri::command]
+fn open_terminal(name: String) -> Result<(), String> {
+    terminal(&name, None)
+}
+
+/// Updates a system's programs. Returns the job, or nothing when the system has its own update
+/// tool that needs the person (Omarchy's), which then runs in a terminal window.
+#[tauri::command]
+async fn update_system(app: AppHandle, name: String) -> Result<Option<u64>, String> {
+    if app.state::<Jobs>().busy(&name) {
+        return Err(format!("{name} is busy with another change."));
+    }
+    let linux = engine::prepare_linux(&app).map_err(|e| e.to_string())?;
+    let script = format!("{linux}/system-update.sh");
+    let check = wsl::output(["-d", &name, "-u", "root", "-e", "sh", &script, "check"]).await.map_err(|e| e.to_string())?;
+    match check.text.trim() {
+        "omarchy" => {
+            terminal(&name, Some(r#"export PATH="$HOME/.local/share/omarchy/bin:$PATH"; omarchy-update"#))?;
+            return Ok(None);
+        }
+        "none" => return Err(format!("EasyWSL does not know how to update {name}: it has none of the usual package managers.")),
+        _ if check.code != 0 => return Err(format!("{name} did not answer. Try again, or restart WSL.")),
+        _ => {}
+    }
+    let job = Job::new(&app, "update", &name, &format!("Updating {name}")).map_err(|e| e.to_string())?;
+    let id = job.id();
+    let _ = app.emit("distros-changed", ());
+    tauri::async_runtime::spawn(async move {
+        job.plan(&[("Downloading and installing updates", Some("a few minutes"))]);
+        job.step("Downloading and installing updates");
+        let result = match job.run(wsl::command(["-d", &name, "-u", "root", "-e", "sh", &script, "run"]), None).await {
+            Ok(()) => {
+                let tail = job.log_tail();
+                let count = tail.lines().rev().find_map(|l| l.strip_prefix("easywsl-updated: ")).and_then(|n| n.trim().parse::<u32>().ok());
+                match count {
+                    Some(0) => job.step("Everything was up to date already"),
+                    Some(1) => job.step("1 package updated"),
+                    Some(n) => job.step(&format!("{n} packages updated")),
+                    None => {}
+                }
+                Ok(())
+            }
+            Err(_) => {
+                let tail = job.log_tail();
+                Err(if tail.contains("Could not get lock") || tail.contains("unable to lock database") {
+                    format!("Another program is installing or updating in {name} right now. Wait for it to finish, then try again.")
+                } else if tail.contains("No space left") || tail.contains("not enough free disk space") {
+                    "The drive is full. Free a few GB and try again.".to_string()
+                } else if tail.contains("Temporary failure resolving") || tail.contains("Could not resolve") || tail.contains("failed retrieving file") {
+                    "The updates could not be downloaded. Check the internet connection and try again.".to_string()
+                } else {
+                    "Updating did not finish. The log shows where it stopped; trying again often works.".to_string()
+                })
+            }
+        };
+        job.finish(&result);
+        let _ = app.emit("distros-changed", ());
+    });
+    Ok(Some(id))
 }
 
 #[tauri::command]
@@ -428,6 +491,23 @@ async fn docker_container_action(app: AppHandle, engine: containers::Engine, id:
     result
 }
 
+/// Updates a container to the newest version of its image.
+#[tauri::command]
+fn docker_update(app: AppHandle, engine: containers::Engine, id: String, name: String) -> Result<u64, String> {
+    let key = format!("container {name}");
+    if app.state::<Jobs>().busy(&key) {
+        return Err(format!("{name} is being updated already."));
+    }
+    let job = Job::new(&app, "container-update", &key, &format!("Updating {name}")).map_err(|e| e.to_string())?;
+    let jid = job.id();
+    tauri::async_runtime::spawn(async move {
+        let result = containers::update(job.clone(), engine, &id).await;
+        job.finish(&result);
+        let _ = app.emit("docker-changed", ());
+    });
+    Ok(jid)
+}
+
 #[tauri::command]
 async fn docker_logs(engine: containers::Engine, id: String) -> Result<String, String> {
     containers::logs(engine, &id).await
@@ -541,6 +621,7 @@ pub fn run() {
             list_jobs,
             dismiss_job,
             open_terminal,
+            update_system,
             open_files,
             reveal,
             stop_distro,
@@ -559,6 +640,7 @@ pub fn run() {
             docker_remove,
             docker_containers,
             docker_container_action,
+            docker_update,
             docker_logs,
             docker_disk,
             docker_clean_up,
