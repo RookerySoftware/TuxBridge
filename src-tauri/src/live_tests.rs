@@ -84,3 +84,52 @@ async fn updates_a_container() {
     assert!(!nginx.starts_with("1.26"), "the new image's own NGINX_VERSION applies");
     assert!(leftovers.is_empty());
 }
+
+/// Installs the assistant into P:\WSL\easywsl-ai-test (Ollama 1.6 GB and the standard model),
+/// asks it something, and leaves it there for the next tests. EASYWSL_AI_MODEL picks the size.
+#[tokio::test]
+#[ignore]
+async fn installs_the_assistant_and_asks_it() {
+    let dir = std::path::PathBuf::from(r"P:\WSL\easywsl-ai-test");
+    let id = std::env::var("EASYWSL_AI_MODEL").unwrap_or("standard".into());
+    let model = crate::ai::MODELS.iter().find(|m| m.id == id).unwrap();
+    let job = crate::jobs::Job::detached("assistant");
+    let started = std::time::Instant::now();
+    let result = crate::ai::install(job.clone(), dir.clone(), model, None).await;
+    println!("install: {result:?} in {:?}\n{}", started.elapsed(), job.log_tail());
+    result.unwrap();
+
+    let ask = |q: &str| vec![
+        crate::ai::Message { role: "system".into(), content: "You help people use Linux on Windows (WSL). Answer briefly.".into() },
+        crate::ai::Message { role: "user".into(), content: q.into() },
+    ];
+    for q in ["How do I copy a file from Windows to my Ubuntu home folder in WSL?", "What does `sudo apt update` do?"] {
+        let t = std::time::Instant::now();
+        let a = crate::ai::answer_for_test(&dir, model.tag, &ask(q)).await.unwrap();
+        println!("\n--- {q} ({:?})\n{a}", t.elapsed());
+        assert!(!a.trim().is_empty());
+    }
+    crate::ai::stop();
+}
+
+/// Asks the installed test assistant (see installs_the_assistant_and_asks_it) with a fresh
+/// server; prints how long loading and answering take.
+#[tokio::test]
+#[ignore]
+async fn assistant_answers_quickly() {
+    let dir = std::path::PathBuf::from(r"P:\WSL\easywsl-ai-test");
+    let id = std::env::var("EASYWSL_AI_MODEL").unwrap_or("standard".into());
+    let model = crate::ai::MODELS.iter().find(|m| m.id == id).unwrap();
+    crate::ai::stop();
+    let t = std::time::Instant::now();
+    crate::ai::start(&dir).await.unwrap();
+    println!("server: {:?}", t.elapsed());
+    let t = std::time::Instant::now();
+    crate::ai::warm_up(&dir, model.tag).await;
+    println!("warm-up: {:?}", t.elapsed());
+    let q = vec![crate::ai::Message { role: "user".into(), content: "Name three Linux distributions.".into() }];
+    let t = std::time::Instant::now();
+    let a = crate::ai::answer_for_test(&dir, model.tag, &q).await.unwrap();
+    println!("answer: {:?}\n{a}", t.elapsed());
+    crate::ai::stop();
+}

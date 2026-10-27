@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Boxes, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon } from "lucide-react";
+import { Boxes, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon, Sparkles } from "lucide-react";
 import { api, type Readiness } from "./api";
 import { useDistros, useJobs, useSessions } from "./state";
 import Setup from "./pages/Setup";
@@ -8,13 +8,16 @@ import GetLinux from "./pages/GetLinux";
 import Settings from "./pages/Settings";
 import Docker from "./pages/Docker";
 import Help from "./pages/Help";
+import Assistant, { useAiStatus } from "./pages/Assistant";
+import { onOpen } from "./assistant/store";
 
-type Page = "systems" | "get" | "docker" | "help" | "settings";
+type Page = "systems" | "get" | "docker" | "assistant" | "help" | "settings";
 
 const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
   { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
   { page: "docker", label: "Docker", icon: <Boxes className="size-4" /> },
+  { page: "assistant", label: "Assistant", icon: <Sparkles className="size-4" /> },
   { page: "help", label: "Help", icon: <HelpCircle className="size-4" /> },
 ];
 
@@ -28,10 +31,15 @@ function Main({ readiness }: { readiness: Readiness }) {
   const { distros, responding, refresh } = useDistros();
   const { jobs, dismiss } = useJobs();
   const { sessions, clear } = useSessions();
+  // Known early, so "Ask the assistant" buttons elsewhere know whether it is there.
+  useAiStatus();
+  useEffect(() => onOpen(() => setPage("assistant")), []);
   // Docker's jobs (turning it on, installing apps) show on its own page.
   const dockerJob = (j: { kind: string }) => j.kind === "docker" || j.kind === "app" || j.kind === "container-update";
-  const systemJobs = jobs.filter((j) => !dockerJob(j));
+  const assistantJob = (j: { kind: string }) => j.kind === "assistant";
+  const systemJobs = jobs.filter((j) => !dockerJob(j) && !assistantJob(j));
   const dockerJobs = jobs.filter(dockerJob);
+  const assistantJobs = jobs.filter(assistantJob);
   const working = (list: typeof jobs) => list.filter((j) => j.state === "running").length;
 
   return (
@@ -51,7 +59,8 @@ function Main({ readiness }: { readiness: Readiness }) {
             >
               {n.icon}
               <span className="flex-1 text-left">{n.label}</span>
-              {((n.page === "systems" && working(systemJobs) > 0) || (n.page === "docker" && working(dockerJobs) > 0)) && (
+              {((n.page === "systems" && working(systemJobs) > 0) || (n.page === "docker" && working(dockerJobs) > 0) ||
+                (n.page === "assistant" && working(assistantJobs) > 0)) && (
                 <Loader2 className="size-3.5 animate-spin text-accent" />
               )}
               {n.soon && <span className="text-[10px] uppercase tracking-wide text-muted">Soon</span>}
@@ -84,6 +93,7 @@ function Main({ readiness }: { readiness: Readiness }) {
         )}
         {page === "get" && <GetLinux onStarted={() => setPage("systems")} />}
         {page === "docker" && <Docker jobs={dockerJobs} onDismissJob={dismiss} />}
+        {page === "assistant" && <Assistant jobs={assistantJobs} onDismissJob={dismiss} onHelp={help} />}
         {page === "help" && <Help topic={topic} onTopic={setTopic} />}
         {page === "settings" && <Settings readiness={readiness} />}
       </main>

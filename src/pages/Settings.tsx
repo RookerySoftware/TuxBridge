@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type Readiness, type Settings as SettingsData } from "../api";
 import { Button, Card, Field, Toggle, inputClass } from "../components/ui";
+import AssistantSettings from "../components/AssistantSettings";
+import SkillSettings from "../components/SkillSettings";
 
 export default function Settings({ readiness }: { readiness: Readiness }) {
   const [settings, setSettings] = useState<SettingsData | null>(null);
@@ -89,6 +91,9 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
           description="Docker keeps running after EasyWSL closes, until Windows restarts or you stop it on the Docker page."
         />
       </Card>
+
+      <AssistantSettings />
+      <SkillSettings />
 
       <Card className="space-y-1 p-5 text-sm text-muted">
         <h2 className="mb-2 font-display font-semibold text-ink">About</h2>

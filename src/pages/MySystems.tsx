@@ -7,7 +7,7 @@ import {
 import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
 import { Badge, Button, Card, Dialog, Menu, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
 import JobCard from "../components/JobCard";
-import { guides } from "./Help";
+import { guides } from "../guides";
 
 function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void }) {
   const [typed, setTyped] = useState("");

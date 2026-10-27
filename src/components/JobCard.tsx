@@ -1,8 +1,9 @@
 // A running or finished job (installing a system, adding Hyprland): its steps with their state,
 // what the tools print right now, and on failure the reason and the log.
 
-import { AlertTriangle, Check, Circle, FileText, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, Circle, FileText, Loader2, Sparkles, X } from "lucide-react";
 import { api, type Job } from "../api";
+import { askAbout, useAssistant } from "../assistant/store";
 import { Button, Card, IconButton } from "./ui";
 
 function StepIcon({ state }: { state: Job["steps"][number]["state"] }) {
@@ -18,7 +19,20 @@ function StepIcon({ state }: { state: Job["steps"][number]["state"] }) {
   }
 }
 
+/** Opens the assistant with the failure, the step and the end of the log. */
+async function ask(job: Job) {
+  const step = job.steps.find((s) => s.state === "failed")?.title;
+  const log = await api.jobLogTail(job.id).catch(() => "");
+  const fence = "```";
+  askAbout(
+    `"${job.title}" did not finish in EasyWSL${step ? `, at the step "${step}"` : ""}. It said: ${job.error ?? "no reason given"}` +
+      (log ? `\n\nThe end of its log:\n\n${fence}\n${log}\n${fence}` : "") +
+      "\n\nWhat went wrong, and how do I fix it?",
+  );
+}
+
 export default function JobCard({ job, onDismiss }: { job: Job; onDismiss: () => void }) {
+  const { installed: assistant } = useAssistant();
   const done = job.state === "done";
   const failed = job.state === "failed";
   return (
@@ -80,7 +94,12 @@ export default function JobCard({ job, onDismiss }: { job: Job; onDismiss: () =>
         </div>
       )}
       {(failed || done) && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {failed && assistant && job.kind !== "assistant" && (
+            <Button icon={<Sparkles className="size-4" />} onClick={() => ask(job)}>
+              Ask the assistant
+            </Button>
+          )}
           <Button variant="ghost" icon={<FileText className="size-4" />} onClick={() => api.reveal(job.log)}>
             Show the log file
           </Button>

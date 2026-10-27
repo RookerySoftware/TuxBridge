@@ -1,3 +1,4 @@
+mod ai;
 mod apps;
 mod catalog;
 mod containers;
@@ -7,6 +8,7 @@ mod engine;
 mod install;
 mod jobs;
 mod paths;
+mod skills;
 mod store;
 mod system;
 mod win;
@@ -272,6 +274,15 @@ fn add_desktop(app: AppHandle, name: String, kind: desktop::Kind, main_key: Stri
 #[tauri::command]
 fn list_jobs(jobs: State<'_, Jobs>) -> Vec<jobs::JobView> {
     jobs.all()
+}
+
+/// The last lines of a job's log (for asking the assistant about a failure).
+#[tauri::command]
+fn job_log_tail(jobs: State<'_, Jobs>, id: u64) -> String {
+    let Some(job) = jobs.all().into_iter().find(|j| j.id == id) else { return String::new() };
+    let text = std::fs::read_to_string(&job.log).unwrap_or_default();
+    let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+    lines[lines.len().saturating_sub(25)..].join("\n")
 }
 
 #[tauri::command]
@@ -587,6 +598,97 @@ fn install_app(app: AppHandle, id: String, answers: std::collections::HashMap<St
     Ok(id)
 }
 
+// ---------------------------------------------------------------------------------------------
+// The assistant (ai.rs)
+
+#[tauri::command]
+async fn ai_status(app: AppHandle) -> ai::Status {
+    let info = app.state::<Store>().ai();
+    ai::status(info).await
+}
+
+/// Installs the assistant with a model ("small", "standard", "large"), or changes its model.
+#[tauri::command]
+fn ai_install(app: AppHandle, model: String) -> Result<u64, String> {
+    const KEY: &str = "assistant";
+    if app.state::<Jobs>().busy(KEY) {
+        return Err("The assistant is being set up already.".into());
+    }
+    let model = ai::MODELS.iter().find(|m| m.id == model).ok_or("Unknown model.")?;
+    let store = app.state::<Store>();
+    let old = store.ai();
+    let dir = old.as_ref().map(|i| std::path::PathBuf::from(&i.dir)).unwrap_or_else(|| store.install_dir().join("easywsl-ai"));
+    let title = if old.is_some() { "Changing the assistant's model" } else { "Installing the assistant" };
+    let job = Job::new(&app, "assistant", KEY, title).map_err(|e| e.to_string())?;
+    let id = job.id();
+    tauri::async_runtime::spawn(async move {
+        let result = ai::install(job.clone(), dir.clone(), model, old.map(|o| o.model)).await;
+        if result.is_ok() {
+            app.state::<Store>().set_ai(Some(store::AiInfo { dir: dir.to_string_lossy().into_owned(), model: model.tag.to_string() }));
+        }
+        job.finish(&result);
+        let _ = app.emit("ai-changed", ());
+    });
+    Ok(id)
+}
+
+#[tauri::command]
+async fn ai_remove(app: AppHandle) -> Result<(), String> {
+    let Some(info) = app.state::<Store>().ai() else { return Ok(()) };
+    let dir = std::path::PathBuf::from(&info.dir);
+    tauri::async_runtime::spawn_blocking(move || ai::remove(&dir)).await.map_err(|e| e.to_string())??;
+    app.state::<Store>().set_ai(None);
+    let _ = app.emit("ai-changed", ());
+    Ok(())
+}
+
+/// Answers a conversation; the answer arrives as "ai-chunk" events with this id.
+#[tauri::command]
+fn ai_chat(app: AppHandle, id: u64, messages: Vec<ai::Message>) -> Result<(), String> {
+    let info = app.state::<Store>().ai().ok_or("The assistant is not installed.")?;
+    tauri::async_runtime::spawn(ai::chat(app.clone(), info.dir.into(), info.model, id, messages));
+    Ok(())
+}
+
+/// Loads the model ahead of the first question (the Assistant page asks this when it opens).
+#[tauri::command]
+async fn ai_warm_up(app: AppHandle) {
+    if let Some(info) = app.state::<Store>().ai() {
+        ai::warm_up(std::path::Path::new(&info.dir), &info.model).await;
+    }
+}
+
+#[tauri::command]
+fn ai_cancel(id: u64) {
+    ai::cancel(id);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Skills for Claude and Codex (skills.rs)
+
+#[tauri::command]
+fn skills_status() -> Vec<skills::TargetStatus> {
+    skills::status()
+}
+
+#[tauri::command]
+fn skill_install(app: AppHandle, target: skills::Target) -> Result<(), String> {
+    skills::install(&app, target)
+}
+
+#[tauri::command]
+fn skill_remove(target: skills::Target) -> Result<(), String> {
+    skills::remove(target)
+}
+
+/// Saves the skill as a .zip in Downloads and shows it in File Explorer.
+#[tauri::command]
+fn skill_export(app: AppHandle) -> Result<String, String> {
+    let zip = skills::export_zip(&app)?;
+    let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{zip}")).spawn();
+    Ok(zip)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -605,6 +707,9 @@ pub fn run() {
                     }
                 }
             });
+            // Installed EasyWSL skills follow the app's version.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || skills::refresh(&handle));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -620,6 +725,7 @@ pub fn run() {
             add_desktop,
             list_jobs,
             dismiss_job,
+            job_log_tail,
             open_terminal,
             update_system,
             open_files,
@@ -647,6 +753,16 @@ pub fn run() {
             list_apps,
             install_app,
             docker_use_in,
+            ai_status,
+            ai_install,
+            ai_remove,
+            ai_chat,
+            ai_cancel,
+            ai_warm_up,
+            skills_status,
+            skill_install,
+            skill_remove,
+            skill_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EasyWSL");

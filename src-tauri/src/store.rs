@@ -61,11 +61,22 @@ impl Default for Settings {
     }
 }
 
+/// The assistant, when installed (ai.rs).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiInfo {
+    /// Its folder: Ollama (ollama\) and the model (models\).
+    pub dir: String,
+    /// The Ollama model, like "qwen3.5:4b-q4_K_M".
+    pub model: String,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Data {
     distros: BTreeMap<String, DistroInfo>,
     settings: Settings,
+    ai: Option<AiInfo>,
 }
 
 pub struct Store {
@@ -119,6 +130,16 @@ impl Store {
     pub fn set_settings(&self, settings: Settings) {
         let mut data = self.data.lock().unwrap();
         data.settings = settings;
+        self.save(&data);
+    }
+
+    pub fn ai(&self) -> Option<AiInfo> {
+        self.data.lock().unwrap().ai.clone()
+    }
+
+    pub fn set_ai(&self, ai: Option<AiInfo>) {
+        let mut data = self.data.lock().unwrap();
+        data.ai = ai;
         self.save(&data);
     }
 

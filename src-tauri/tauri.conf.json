@@ -40,7 +40,10 @@
     "resources": {
       "engine/": "engine/",
       "linux/": "linux/",
-      "bin/": "bin/"
+      "bin/": "bin/",
+      "skill/": "skill/",
+      "../help/": "help/",
+      "../src/assistant/knowledge.md": "assistant/knowledge.md"
     },
     "shortDescription": "Linux on Windows, made easy",
     "publisher": "ItsOverk1ll"

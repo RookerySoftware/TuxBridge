@@ -78,7 +78,8 @@ impl Jobs {
 }
 
 pub struct Job {
-    app: AppHandle,
+    /// None for a job in a test, which only logs.
+    app: Option<AppHandle>,
     view: Arc<Mutex<JobView>>,
     log: Mutex<std::fs::File>,
 }
@@ -105,7 +106,7 @@ impl Job {
             last_line: None,
         }));
         jobs.list.lock().unwrap().insert(id, view.clone());
-        let job = Arc::new(Job { app: app.clone(), view, log: Mutex::new(file) });
+        let job = Arc::new(Job { app: Some(app.clone()), view, log: Mutex::new(file) });
         job.emit();
         Ok(job)
     }
@@ -116,7 +117,29 @@ impl Job {
 
     fn emit(&self) {
         let view = self.view.lock().unwrap().clone();
-        let _ = self.app.emit("job", view);
+        if let Some(app) = &self.app {
+            let _ = app.emit("job", view);
+        }
+    }
+
+    /// A job without the app, for tests: it only writes its log (into the temp folder).
+    #[cfg(test)]
+    pub fn detached(kind: &str) -> Arc<Job> {
+        let log_path = std::env::temp_dir().join(format!("easywsl-test-{kind}-{}.log", now()));
+        let view = JobView {
+            id: 0,
+            kind: kind.into(),
+            distro: String::new(),
+            title: kind.into(),
+            steps: Vec::new(),
+            state: State::Running,
+            error: None,
+            log: log_path.to_string_lossy().into_owned(),
+            started: now(),
+            finished: None,
+            last_line: None,
+        };
+        Arc::new(Job { app: None, view: Arc::new(Mutex::new(view)), log: Mutex::new(std::fs::File::create(log_path).unwrap()) })
     }
 
     /// Lists the steps ahead, so the window can show the whole way from the start.
@@ -150,6 +173,11 @@ impl Job {
 
     pub fn log_line(&self, line: &str) {
         let _ = writeln!(self.log.lock().unwrap(), "{line}");
+    }
+
+    /// Shows a line under the running step (and logs it), like a command's output.
+    pub fn say(&self, line: &str) {
+        self.output_line(line);
     }
 
     fn output_line(&self, line: &str) {

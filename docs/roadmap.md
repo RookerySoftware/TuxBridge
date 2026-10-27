@@ -49,6 +49,10 @@ who have never used WSL, Linux or a command line. Name is a working title.
 - Signed installer, auto-update, winget
 - Final name
 
-## Phase 6: local AI
+## Phase 6: local AI (started early, see docs/assistant.md)
 
-- A small local model answering from the help directory (and Open WebUI from the app gallery)
+- Done: the Assistant page, an optional local model (Qwen 3.5 on EasyWSL's own Ollama) that
+  answers from the guides, a description of the app and the PC's live state; "Ask the
+  assistant" on failed tasks; an EasyWSL skill for Claude Code, Codex and claude.ai
+- Next: let the assistant act (with the person's OK: update a system, start a container),
+  embeddings instead of keyword search when the guides grow, AMD/Intel graphics detection

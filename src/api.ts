@@ -178,6 +178,49 @@ export interface InstallRequest {
   setDefault: boolean;
 }
 
+export interface AiModel {
+  id: "small" | "standard" | "large";
+  tag: string;
+  name: string;
+  description: string;
+  sizeGb: number;
+}
+
+export interface AiStatus {
+  installed: boolean;
+  running: boolean;
+  /** The installed model's id. */
+  model: AiModel["id"] | null;
+  models: AiModel[];
+  recommended: AiModel["id"];
+  runtimeGb: number;
+  /** What was found: the graphics card and memory. */
+  hardware: string;
+}
+
+export interface AiMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+/** A piece of the assistant's answer, as it is written. */
+export interface AiChunk {
+  id: number;
+  text: string;
+  done: boolean;
+  error: string | null;
+}
+
+/** An AI app the EasyWSL skill can be added to. */
+export interface SkillTarget {
+  id: "claude" | "codex";
+  name: string;
+  detected: boolean;
+  installed: boolean;
+  /** The skill's folder. */
+  path: string;
+}
+
 export const inApp = "__TAURI_INTERNALS__" in window;
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -200,6 +243,7 @@ export const api = {
     call<number>("add_desktop", { name, kind, mainKey, allowThirdParty }),
   listJobs: () => call<Job[]>("list_jobs"),
   dismissJob: (id: number) => call<void>("dismiss_job", { id }),
+  jobLogTail: (id: number) => call<string>("job_log_tail", { id }),
   openTerminal: (name: string) => call<void>("open_terminal", { name }),
   openFiles: (name: string) => call<void>("open_files", { name }),
   reveal: (path: string) => call<void>("reveal", { path }),
@@ -229,10 +273,24 @@ export const api = {
   /** Updates a system's programs: the job, or null when its own tool opened in a terminal (Omarchy). */
   updateSystem: (name: string) => call<number | null>("update_system", { name }),
   dockerUseIn: (name: string) => call<number>("docker_use_in", { name }),
+  aiStatus: () => call<AiStatus>("ai_status"),
+  /** Installs the assistant with this model, or changes its model; returns the job. */
+  aiInstall: (model: AiModel["id"]) => call<number>("ai_install", { model }),
+  aiRemove: () => call<void>("ai_remove"),
+  /** Starts an answer; it arrives as "ai-chunk" events with this id. */
+  aiChat: (id: number, messages: AiMessage[]) => call<void>("ai_chat", { id, messages }),
+  aiCancel: (id: number) => call<void>("ai_cancel", { id }),
+  /** Loads the model ahead of the first question. */
+  aiWarmUp: () => call<void>("ai_warm_up"),
+  skillsStatus: () => call<SkillTarget[]>("skills_status"),
+  skillInstall: (target: SkillTarget["id"]) => call<void>("skill_install", { target }),
+  skillRemove: (target: SkillTarget["id"]) => call<void>("skill_remove", { target }),
+  /** Saves the skill as a .zip in Downloads; returns its path. */
+  skillExport: () => call<string>("skill_export"),
 };
 
 /** Subscribes to a backend event; returns the function that unsubscribes. */
-export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed", handler: (payload: T) => void): () => void {
+export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed" | "ai-changed" | "ai-chunk", handler: (payload: T) => void): () => void {
   if (!inApp) {
     const listener = (e: Event) => handler((e as CustomEvent<T>).detail);
     window.addEventListener(`mock:${event}`, listener);
@@ -268,6 +326,30 @@ const mockState = {
   settings: { installDir: null, fullScreen: true, resolution: null, frameRate: 60, startDocker: true } as Settings,
   docker: { installed: !new URLSearchParams(location.search).has("nodocker"), running: true, version: "29.9.2", desktopInstalled: false, desktopRunning: false } as DockerStatus,
 };
+
+/** For trying prompts in the browser: the assistant's server (ai.rs) answers directly. */
+async function realAi(id: number, messages: AiMessage[]) {
+  const model = new URLSearchParams(location.search).get("realai") || "qwen3.5:4b-q4_K_M";
+  try {
+    const response = await fetch("http://127.0.0.1:11435/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ model, messages, stream: true, think: false, options: { num_ctx: 16384, temperature: 0.3 } }),
+    });
+    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+    let pending = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      pending += value;
+      const lines = pending.split("\n");
+      pending = lines.pop()!;
+      for (const line of lines.filter(Boolean)) emit("ai-chunk", { id, text: JSON.parse(line).message?.content ?? "", done: false, error: null });
+    }
+    emit("ai-chunk", { id, text: "", done: true, error: null });
+  } catch (e) {
+    emit("ai-chunk", { id, text: "", done: true, error: String(e) });
+  }
+}
 
 function emit(event: string, detail: unknown) {
   window.dispatchEvent(new CustomEvent(`mock:${event}`, { detail }));
@@ -334,6 +416,31 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       { engine: "easywsl", id: "a1", name: "jellyfin", image: "jellyfin/jellyfin:latest", state: "running", status: "Up 2 hours", ports: [8096], created: "", app: "jellyfin" },
       { engine: "easywsl", id: "b2", name: "postgres", image: "postgres:17", state: "exited", status: "Exited (0) 3 days ago", ports: [], created: "", app: "postgres" },
     ] : [];
+    case "ai_status": return {
+      installed: !new URLSearchParams(location.search).has("noai"), running: false, model: "standard", recommended: "standard", runtimeGb: 1.6,
+      hardware: "NVIDIA GeForce RTX 4060 with 8 GB, 32 GB of memory",
+      models: [
+        { id: "small", tag: "qwen3.5:2b-q4_K_M", name: "Small", description: "For PCs with little memory. Quick, but makes more mistakes.", sizeGb: 1.9 },
+        { id: "standard", tag: "qwen3.5:4b-q4_K_M", name: "Standard", description: "Good answers on most PCs.", sizeGb: 3.3 },
+        { id: "large", tag: "qwen3.5:9b-q4_K_M", name: "Large", description: "The best answers. Needs a graphics card with 12 GB or more.", sizeGb: 6.6 },
+      ],
+    };
+    case "ai_chat": {
+      const id = args?.id as number;
+      if (new URLSearchParams(location.search).has("realai")) {
+        realAi(id, args?.messages as AiMessage[]);
+        return null;
+      }
+      const words = "In **Ubuntu**, open a terminal and run:\n\n```\nsudo apt update && sudo apt upgrade\n```\n\nOr use **Update** in the system's menu. See [Installing software](software.md).".split(/(?<= )/);
+      words.forEach((w, i) => setTimeout(() => emit("ai-chunk", { id, text: w, done: false, error: null }), 40 * i));
+      setTimeout(() => emit("ai-chunk", { id, text: "", done: true, error: null }), 40 * words.length);
+      return null;
+    }
+    case "skills_status": return [
+      { id: "claude", name: "Claude Code", detected: true, installed: false, path: "C:\\Users\\me\\.claude\\skills\\easywsl" },
+      { id: "codex", name: "Codex", detected: false, installed: false, path: "C:\\Users\\me\\.agents\\skills\\easywsl" },
+    ];
+    case "skill_export": return "C:\\Users\\me\\Downloads\\easywsl-skill.zip";
     case "docker_update": return 0;
     case "update_system": return 0;
     case "docker_logs": return "Starting...\nReady.";

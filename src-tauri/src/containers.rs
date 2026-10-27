@@ -183,7 +183,7 @@ pub async fn stop() -> Result<(), String> {
 // Turning Docker on
 
 /// Downloads `url` to `path`, logging progress, and returns the file's SHA-256 (hex).
-async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<String> {
+pub(crate) async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<String> {
     let client = reqwest::Client::builder().user_agent("EasyWSL").build()?;
     let response = client.get(url).send().await?.error_for_status()?;
     let total = response.content_length().unwrap_or(0);
@@ -202,7 +202,7 @@ async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<String> {
         let percent = if total > 0 { done * 100 / total } else { 0 };
         if percent / 10 != last {
             last = percent / 10;
-            job.log_line(&format!("downloaded {percent}% of {} MB", total / 1_000_000));
+            job.say(&format!("{percent}% of {} MB", total / 1_000_000));
         }
     }
     file.flush().await?;
@@ -211,7 +211,7 @@ async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<String> {
     Ok(hash)
 }
 
-async fn text(url: &str) -> anyhow::Result<String> {
+pub(crate) async fn text(url: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::builder().user_agent("EasyWSL").build()?;
     Ok(client.get(url).send().await?.error_for_status()?.text().await?)
 }
@@ -248,7 +248,7 @@ async fn cli_zip() -> anyhow::Result<String> {
 }
 
 /// Windows' own tar (it reads zip files too).
-fn windows_tar() -> PathBuf {
+pub(crate) fn windows_tar() -> PathBuf {
     std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows")).join(r"System32\tar.exe")
 }
 
