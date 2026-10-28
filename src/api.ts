@@ -245,6 +245,8 @@ export const api = {
   dismissJob: (id: number) => call<void>("dismiss_job", { id }),
   jobLogTail: (id: number) => call<string>("job_log_tail", { id }),
   openTerminal: (name: string) => call<void>("open_terminal", { name }),
+  /** Sets up a Learn quest in a system and opens a terminal there. */
+  startQuest: (name: string, quest: string) => call<void>("start_quest", { name, quest }),
   openFiles: (name: string) => call<void>("open_files", { name }),
   reveal: (path: string) => call<void>("reveal", { path }),
   stop: (name: string) => call<void>("stop_distro", { name }),
@@ -315,6 +317,8 @@ const mockCatalog: CatalogEntry[] = [
   { id: "omarchy", title: "Omarchy", tagline: "A beautiful, ready-made Hyprland desktop by DHH. Beta.", description: "Omarchy is Arch Linux with a polished Hyprland desktop.", source: { kind: "omarchy" }, desktop: null, hyprland: "included", hyprlandNote: "Omarchy is a Hyprland desktop; it is always included.", thirdParty: null, minutes: "10 to 20", sizeGb: 11, recommended: false, accent: "#8FBF8F", website: "https://omarchy.org" },
   { id: "mint", title: "Linux Mint 22.3", tagline: "Familiar and calm. Built on Ubuntu.", description: "Linux Mint is known for feeling comfortable to people coming from Windows.", source: { kind: "docker", image: "linuxmintd/mint22.3-amd64" }, desktop: { id: "cinnamon", name: "Cinnamon", note: null, minutes: "5 to 10", sizeGb: 1 }, hyprland: "optional", hyprlandNote: "Mint has no Hyprland of its own; it comes from a community package source.", thirdParty: "Hyprland and a newer graphics driver come from two community package sources (PPAs) that are not part of Linux Mint.", minutes: "4 to 8", sizeGb: 2.5, recommended: false, accent: "#87CF3E", website: "https://linuxmint.com" },
   { id: "debian", title: "Debian", tagline: "Rock-solid and conservative. The base of Ubuntu.", description: "Debian changes slowly and carefully.", source: { kind: "wsl", name: "Debian" }, desktop: { id: "xfce", name: "Xfce", note: null, minutes: "5 to 10", sizeGb: 1 }, hyprland: "no", hyprlandNote: null, thirdParty: null, minutes: "2 to 4", sizeGb: 1.5, recommended: false, accent: "#A81D33", website: "https://www.debian.org" },
+  { id: "kali", title: "Kali Linux", tagline: "For security testing and learning about it.", description: "Kali comes with the tools security professionals use to test systems.", source: { kind: "wsl", name: "kali-linux" }, desktop: { id: "xfce", name: "Xfce", note: null, minutes: "5 to 10", sizeGb: 1 }, hyprland: "optional", hyprlandNote: null, thirdParty: null, minutes: "3 to 5", sizeGb: 2, recommended: false, accent: "#367BF0", website: "https://www.kali.org" },
+  { id: "parrot", title: "Parrot Security", tagline: "Security testing, privacy and development tools. A friendly Kali alternative.", description: "Parrot is built on Debian like Kali, with security, forensics, privacy and programming tools.", source: { kind: "docker", image: "parrotsec/core" }, desktop: { id: "kde", name: "KDE Plasma", note: null, minutes: "10 to 15", sizeGb: 2.5 }, hyprland: "no", hyprlandNote: null, thirdParty: null, minutes: "3 to 5", sizeGb: 1, recommended: false, accent: "#05EEFF", website: "https://www.parrotsec.org" },
 ];
 
 const mockState = {
@@ -404,6 +408,7 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       emit("session", { distro: a.name, state: "starting", message: "Starting the desktop" });
       setTimeout(() => emit("session", { distro: a.name, state: "running", message: null }), 1500);
       return null;
+    case "start_quest": return null;
     case "list_sessions": return [];
     case "get_settings": return mockState.settings;
     case "set_settings": mockState.settings = a.settings; return null;

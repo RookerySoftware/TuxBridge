@@ -52,7 +52,14 @@ else
                 ubuntu) apt-cache show xubuntu-default-settings > /dev/null 2>&1 && pkgs+=(xubuntu-default-settings xubuntu-wallpapers) ;;
             esac
             ;;
-        kde) pkgs=(kde-plasma-desktop konsole dolphin) ;;
+        kde)
+            pkgs=(kde-plasma-desktop konsole dolphin)
+            # Parrot's own look for Plasma: its theme, wallpapers and menu of tools.
+            # Its panel also starts System Settings and Firefox.
+            [ "${ID:-}" = parrot ] && for p in echo-themes-kde parrot-themes parrot-wallpapers parrot-menu systemsettings firefox-esr; do
+                apt-cache show "$p" > /dev/null 2>&1 && pkgs+=("$p")
+            done
+            ;;
         # GNOME runs headless, with no X server of its own (gnome-start.sh).
         gnome)
             pkgs=(gnome-shell gnome-session gnome-terminal nautilus gnome-control-center gnome-text-editor
@@ -79,6 +86,14 @@ else
 fi
 
 step "Preparing the session"
+# Parrot's panel has a VSCodium button, which is a 600 MB download of its own; without it, the
+# button goes. The account's copy of the layout was made from /etc/skel already.
+if [ "$DESKTOP" = kde ] && ! command -v codium > /dev/null; then
+    H=$(getent passwd "$U" | cut -d: -f6)
+    for f in /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc "$H/.config/plasma-org.kde.plasma.desktop-appletsrc"; do
+        [ -f "$f" ] && sed -i 's/,applications:codium\.desktop//' "$f"
+    done
+fi
 # The user's systemd session is kept running, so that /run/user/<uid> exists before the desktop
 # starts and a later login cannot replace it (see hyprland-wsl's install.sh).
 if [ -d /run/systemd/system ]; then

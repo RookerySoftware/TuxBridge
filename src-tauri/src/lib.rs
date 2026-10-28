@@ -73,6 +73,7 @@ async fn probe(app: AppHandle, name: String) {
         "ubuntu" => Some("ubuntu"),
         "debian" => Some("debian"),
         "kali" => Some("kali"),
+        "parrot" => Some("parrot"),
         "linuxmint" => Some("mint"),
         "cachyos" => Some("cachyos"),
         "omarchy" => Some("omarchy"),
@@ -365,6 +366,32 @@ async fn update_system(app: AppHandle, name: String) -> Result<Option<u64>, Stri
         let _ = app.emit("distros-changed", ());
     });
     Ok(Some(id))
+}
+
+/// Sets up a Learn quest inside a system: runs the bundled script (which builds a folder of
+/// practice files as the person's own user), then opens a terminal there. The flags the script
+/// hides are checked in the app (src/learn/quests.ts).
+#[tauri::command]
+async fn start_quest(app: AppHandle, name: String, quest: String) -> Result<(), String> {
+    // (script file, folder, first file to show) for each known quest.
+    let (script, folder, first) = match quest.as_str() {
+        "kids" => ("quest-kids.sh", "treasure-hunt", "START-HERE.txt"),
+        "linux" => ("quest-linux.sh", "linux-quest", "README.txt"),
+        "kali" => ("quest-kali.sh", "security-quest", "BRIEFING.txt"),
+        _ => return Err("Unknown quest.".into()),
+    };
+    if !wsl::exists(&name) {
+        return Err(format!("{name} is not installed."));
+    }
+    let linux = engine::prepare_linux(&app).map_err(|e| e.to_string())?;
+    let out = wsl::output(["-d", &name, "-e", "bash", &format!("{linux}/{script}")])
+        .await
+        .map_err(|e| e.to_string())?;
+    if out.code != 0 {
+        return Err(format!("The quest could not be set up. {}", out.text.lines().last().unwrap_or("")));
+    }
+    // Open a terminal in the quest folder, showing the first file to read.
+    terminal(&name, Some(&format!("cd ~/{folder} 2> /dev/null; clear; cat {first} 2> /dev/null; echo")))
 }
 
 #[tauri::command]
@@ -728,6 +755,7 @@ pub fn run() {
             job_log_tail,
             open_terminal,
             update_system,
+            start_quest,
             open_files,
             reveal,
             stop_distro,

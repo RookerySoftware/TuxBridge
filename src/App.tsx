@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Boxes, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon, Sparkles } from "lucide-react";
+import { Boxes, GraduationCap, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon, Sparkles } from "lucide-react";
 import { api, type Readiness } from "./api";
 import { useDistros, useJobs, useSessions } from "./state";
 import Setup from "./pages/Setup";
@@ -7,16 +7,18 @@ import MySystems from "./pages/MySystems";
 import GetLinux from "./pages/GetLinux";
 import Settings from "./pages/Settings";
 import Docker from "./pages/Docker";
+import Learn from "./pages/Learn";
 import Help from "./pages/Help";
 import Assistant, { useAiStatus } from "./pages/Assistant";
 import { onOpen } from "./assistant/store";
 
-type Page = "systems" | "get" | "docker" | "assistant" | "help" | "settings";
+type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "settings";
 
 const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
   { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
   { page: "docker", label: "Docker", icon: <Boxes className="size-4" /> },
+  { page: "learn", label: "Learn", icon: <GraduationCap className="size-4" /> },
   { page: "assistant", label: "Assistant", icon: <Sparkles className="size-4" /> },
   { page: "help", label: "Help", icon: <HelpCircle className="size-4" /> },
 ];
@@ -93,6 +95,7 @@ function Main({ readiness }: { readiness: Readiness }) {
         )}
         {page === "get" && <GetLinux onStarted={() => setPage("systems")} />}
         {page === "docker" && <Docker jobs={dockerJobs} onDismissJob={dismiss} />}
+        {page === "learn" && <Learn distros={distros ?? []} onGetLinux={() => setPage("get")} />}
         {page === "assistant" && <Assistant jobs={assistantJobs} onDismissJob={dismiss} onHelp={help} />}
         {page === "help" && <Help topic={topic} onTopic={setTopic} />}
         {page === "settings" && <Settings readiness={readiness} />}

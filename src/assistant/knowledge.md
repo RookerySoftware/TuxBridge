@@ -14,8 +14,8 @@ It is for people new to Linux. Everything runs on the person's own PC.
   its name). The star marks the default system. If WSL stops responding, the page offers
   **Restart WSL…**, which stops every running system.
 - **Get Linux**: the catalogue. Ubuntu 26.04 LTS (GNOME desktop), Linux Mint 22.3 (Cinnamon),
-  Debian (Xfce), Kali Linux (Xfce), Arch Linux, CachyOS, and Omarchy (DHH's ready-made
-  Hyprland desktop on Arch, beta, about 11 GB). Installing asks for a name, a Linux user name
+  Debian (Xfce), Kali Linux (Xfce), Parrot Security (KDE Plasma), Arch Linux, CachyOS, and
+  Omarchy (DHH's ready-made Hyprland desktop on Arch, beta, about 11 GB). Installing asks for a name, a Linux user name
   and password, and optionally a desktop; it takes a few minutes.
 - **Docker**: **Turn on Docker** sets up the free Docker Engine in a hidden Alpine system
   (easywsl-docker). Then: the **Containers** tab (start, stop, **Open** in the browser, and in
@@ -25,6 +25,13 @@ It is for people new to Linux. Everything runs on the person's own PC.
   Vaultwarden, VS Code in the browser, PostgreSQL, MariaDB, Redis), the engine card's menu
   (**Disk use and clean-up**, stop, remove Docker), and **Docker in your Linux systems** (a
   **Set up** button per system so `docker` works inside it too).
+- **Learn**: guided lessons (step-by-step walk-throughs of the terminal, installing software,
+  the Windows/Linux file bridge, and tours of Ubuntu, Kali and Parrot) and quests (HackTheBox-
+  style challenge sets). A quest builds a folder of harmless practice files in a system you pick
+  and opens a terminal there; you hunt for flags and type them back. Quests: **Linux Basics**
+  (any system), **Security Basics** (Kali or Parrot; defensive only — reading logs, decoding,
+  checking files), and a **Treasure Hunt** for children. A **Kids mode** toggle swaps in gentler
+  projects.
 - **Help**: the guides, with a search.
 - **Assistant**: this chat.
 - **Settings**: the folder for new systems; desktops (open full screen, resolution, frame
@@ -35,7 +42,7 @@ It is for people new to Linux. Everything runs on the person's own PC.
 | To | Do |
 | --- | --- |
 | Update a system's programs | **Update** in the system's **⋯** menu on My systems |
-| Install a program | A terminal in that system (**Terminal**, or the arrow next to **Open desktop**), then its package manager: `sudo apt install <name>` (Ubuntu, Mint, Debian, Kali) or `sudo pacman -S <name>` (Arch, CachyOS, Omarchy) |
+| Install a program | A terminal in that system (**Terminal**, or the arrow next to **Open desktop**), then its package manager: `sudo apt install <name>` (Ubuntu, Mint, Debian, Kali, Parrot) or `sudo pacman -S <name>` (Arch, CachyOS, Omarchy) |
 | Open the Linux files in Windows | **Files** on the system's card |
 | Full screen desktop | **Ctrl+Alt+Enter** in the desktop window |
 | Add a desktop to a system | **Add the … desktop** in the system's **⋯** menu |
@@ -60,7 +67,7 @@ It is for people new to Linux. Everything runs on the person's own PC.
   ports are reachable at `http://localhost:<port>` from this PC only.
 - Docker Desktop, if installed, keeps working; its containers are listed too.
 - Updating a system by hand: `sudo apt update && sudo apt upgrade` on Ubuntu, Mint, Debian,
-  Kali (Kali: `sudo apt full-upgrade`); `sudo pacman -Syu` on Arch and CachyOS;
+  Kali, Parrot (Kali and Parrot: `sudo apt full-upgrade`); `sudo pacman -Syu` on Arch and CachyOS;
   `omarchy-update` on Omarchy.
 - `wsl --shutdown` in PowerShell stops all of WSL (every system); `wsl -l -v` lists systems
   with their state and WSL version; `wsl -d <name>` opens one in the terminal.

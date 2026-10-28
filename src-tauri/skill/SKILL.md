@@ -51,7 +51,7 @@ A failed task's log ends with the command that failed and its output; read it be
 ## Doing things for the person
 
 - Updating a system: `wsl -d <name> -u root -e sh -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade'`
-  (Ubuntu, Mint, Debian, Kali), `wsl -d <name> -u root -e pacman -Syu --noconfirm` (Arch,
+  (Ubuntu, Mint, Debian, Kali, Parrot), `wsl -d <name> -u root -e pacman -Syu --noconfirm` (Arch,
   CachyOS). Omarchy updates with `omarchy-update`, run by the person in a terminal (it asks for
   their password). The system's **Update** in EasyWSL does the same.
 - Installing a program: the system's package manager (`apt`, `pacman`); see

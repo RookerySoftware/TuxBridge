@@ -185,6 +185,23 @@ pub fn all() -> Vec<Entry> {
             accent: "#367BF0",
             website: "https://www.kali.org",
         },
+        Entry {
+            id: "parrot",
+            title: "Parrot Security",
+            tagline: "Security testing, privacy and development tools. A friendly Kali alternative.",
+            description: "Parrot is built on Debian like Kali, with security, forensics, privacy and programming tools. \
+                          Its tools install in groups, so it starts small.",
+            source: Source::Docker { image: "parrotsec/core" },
+            desktop: Some(Desktop { id: "kde", name: "KDE Plasma", note: None, minutes: "10 to 15", size_gb: 2.5 }),
+            hyprland: Hyprland::No,
+            hyprland_note: None,
+            third_party: None,
+            minutes: "3 to 5",
+            size_gb: 1.0,
+            recommended: false,
+            accent: "#05EEFF",
+            website: "https://www.parrotsec.org",
+        },
     ]
 }
 

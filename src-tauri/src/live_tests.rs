@@ -40,6 +40,17 @@ async fn downloads_a_docker_image() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Downloads a distro's image to try it by hand: EASYWSL_IMAGE=parrotsec/core, into
+/// EASYWSL_IMAGE_DIR (kept), then `wsl --import` the layer (or merge-layers.sh several).
+#[tokio::test]
+#[ignore]
+async fn downloads_a_distro_image() {
+    let image = std::env::var("EASYWSL_IMAGE").expect("EASYWSL_IMAGE");
+    let dir = std::path::PathBuf::from(std::env::var("EASYWSL_IMAGE_DIR").expect("EASYWSL_IMAGE_DIR"));
+    let layers = docker::download(&image, &dir, |done, total| println!("{done}/{total}")).await.unwrap();
+    println!("{layers:?}");
+}
+
 /// Needs EasyWSL's Docker engine running. Points nginx:alpine at an older nginx, starts a
 /// container from it, then updates it to the real nginx:alpine.
 #[tokio::test]

@@ -4,13 +4,13 @@ Linux on Windows, made easy: a Windows app that installs and runs Linux systems 
 for people who have never used Linux or a command line. Each system can get a full Linux
 desktop, Hyprland, with one checkbox. *EasyWSL is a working title.*
 
-Status: **pre-release, Phase 2** (see [docs/roadmap.md](docs/roadmap.md)). Next: the help directory.
+Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
 
 ## What it does
 
 - Checks the PC (Windows version, virtualization, WSL) and fixes what it can, with one
   "Yes" prompt from Windows
-- **Get Linux**: Ubuntu, Arch Linux, Omarchy, Linux Mint, CachyOS, Debian, Kali, described
+- **Get Linux**: Ubuntu, Arch Linux, Omarchy, Linux Mint, CachyOS, Debian, Kali, Parrot Security, described
   in plain words; install with a name, an account and a "Use the Hyprland desktop" checkbox
 - **My systems**: open a system's terminal, its files, or its Hyprland desktop; stop it, make
   it the default, add Hyprland later, remove it; recognises systems installed without EasyWSL
@@ -20,6 +20,10 @@ Status: **pre-release, Phase 2** (see [docs/roadmap.md](docs/roadmap.md)). Next:
 - **Assistant** (optional): an AI on the PC that answers questions about EasyWSL, Linux, WSL,
   Windows and Docker from the guides and the PC's state; or an EasyWSL skill for Claude Code,
   Codex and claude.ai instead. See [docs/assistant.md](docs/assistant.md)
+- **Learn**: guided lessons (the terminal, software, the file bridge, tours of Ubuntu, Kali and
+  Parrot) and HackTheBox-style quests that build harmless practice files in a chosen system and
+  have you hunt for flags; a defensive Security Basics quest for Kali and Parrot, and a Kids
+  mode with a gentle Treasure Hunt. See [docs/learn.md](docs/learn.md)
 - **Help**: guides for newcomers, from "what is Linux" to each system's basics (`help/`, in
   Markdown, to be shared with the website)
 - Says so plainly when WSL itself stops responding, and offers to restart it

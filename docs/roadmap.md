@@ -34,15 +34,21 @@ who have never used WSL, Linux or a command line. Name is a working title.
   Linux, installing software, the Hyprland desktop), written in Markdown and shared with the
   website (Cloudflare Pages)
 - Done: the Help page (sections, search, links between guides, "Guide to ..." in each system's
-  menu) and 17 guides in `help/` (front matter: title, summary, section, order)
+  menu) and the guides in `help/` (front matter: title, summary, section, order), a full guide
+  for every distro (including Parrot), plus backups
 - Next: pictures in the guides, the GNOME/Cinnamon/Xfce basics as guides of their own, the
   website sharing `help/`
 
-## Phase 4: assistant and tutorials
+## Phase 4: learn (started, see docs/learn.md)
 
-- A friendly assistant window over the desktop viewer that walks through steps and follows
-  what happens in Hyprland (its event socket), so it advances when the step is done
-- Tutorials inside the distros
+- Done: the **Learn** page — guided lessons (step-by-step walk-throughs) and HackTheBox-style
+  quests that build practice files in a chosen system (bundled `quest-*.sh`) and check flags in
+  the browser against their SHA-256; a defensive Security Basics quest for Kali and Parrot; a
+  Kids mode with a Treasure Hunt
+- Next: more lessons, a lesson that drives the app's own buttons, progress shared with the
+  assistant
+- Later: a friendly assistant window over the desktop viewer that follows Hyprland's event
+  socket and advances when a step is done
 
 ## Phase 5: release
 
