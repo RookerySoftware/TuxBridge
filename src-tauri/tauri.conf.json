@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "TuxBridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "app.rookerysoftware.tuxbridge",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -25,8 +25,16 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE1NDAyRDE2MEY5MURGMzkKUldRNTM1RVBGaTFBcFZwV21uU0tSTTdRdmxkODc3Z2NnQ1JDZEcwbWtZemJqdm5iYXpXaGt4cE8K",
+      "endpoints": ["https://tuxbridge.com/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": [
       "nsis"
     ],

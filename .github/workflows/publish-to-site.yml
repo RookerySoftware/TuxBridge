@@ -39,10 +39,12 @@ jobs:
       - name: Download the installer
         id: release
         run: |
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --dir installer
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --pattern '*-setup.exe.sig' --dir installer
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > installer/notes.md
           count=$(ls installer/*-setup.exe | wc -l)
           if [ "$count" -ne 1 ]; then echo "::error::Expected one *-setup.exe in $TAG, found $count"; exit 1; fi
           echo "installer=$(ls installer/*-setup.exe)" >> "$GITHUB_OUTPUT"
+          if ls installer/*-setup.exe.sig > /dev/null 2>&1; then echo "signature=$(ls installer/*-setup.exe.sig)" >> "$GITHUB_OUTPUT"; fi
           echo "prerelease=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" >> "$GITHUB_OUTPUT"
 
       - name: Check out the website
@@ -54,9 +56,11 @@ jobs:
 
       - name: Put the installer on the site
         run: |
-          flag=""
-          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then flag="--prerelease"; fi
-          python3 .github/scripts/publish_to_site.py --site website --installer "${{ steps.release.outputs.installer }}" --version "$TAG" $flag
+          flags=""
+          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then flags="--prerelease"; fi
+          # The signature lets TuxBridge's updater offer this version (download/latest.json).
+          if [ -n "${{ steps.release.outputs.signature }}" ]; then flags="$flags --signature ${{ steps.release.outputs.signature }} --notes installer/notes.md"; fi
+          python3 .github/scripts/publish_to_site.py --site website --installer "${{ steps.release.outputs.installer }}" --version "$TAG" $flags
 
       - name: Push
         working-directory: website

@@ -126,6 +126,8 @@ export const explanations: [string, string][] = [
   ["Report this", "Opens Feedback with this failure filled in, so the team can fix it."],
   ["Preview the report", "Shows exactly what the diagnostic report contains before you send it."],
   ["Save as a file", "Saves your message and the report as a text file on your Desktop."],
+  ["Update TuxBridge", "Downloads the newest TuxBridge, checks it really comes from the team, and installs it. TuxBridge restarts by itself."],
+  ["Check again", "Asks tuxbridge.com whether there's a newer version."],
   ["Settings", "Where new systems go, desktop options, Docker, my AI, Kids mode and me."],
   ["Terminal", "Opens a command line in this system: you type a command, press Enter, and it runs."],
   ["Open desktop", "Opens this system's desktop in its own window. Close the window to end the session."],

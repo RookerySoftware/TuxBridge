@@ -221,6 +221,13 @@ export interface SkillTarget {
   path: string;
 }
 
+/** Settings → Update TuxBridge: this version, and a newer one if there is. */
+export interface UpdateInfo {
+  current: string;
+  available: string | null;
+  notes: string | null;
+}
+
 export type FeedbackKind = "bug" | "idea" | "other";
 
 export interface FeedbackRequest {
@@ -299,6 +306,9 @@ export const api = {
   /** Shows the main window, on a page if given. */
   showWindow: (page?: string) => call<void>("show_window", { page }),
   quit: () => call<void>("quit_app"),
+  /** Updating TuxBridge itself; installing closes the app and its installer starts it again. */
+  updateCheck: () => call<UpdateInfo>("update_check"),
+  updateInstall: () => call<void>("update_install"),
   /** The Feedback page: whether this build can send to Discord, the diagnostic report, sending, saving. */
   feedbackCanSend: () => call<boolean>("feedback_can_send"),
   feedbackReport: () => call<string>("feedback_report"),
@@ -343,7 +353,7 @@ export const api = {
 };
 
 /** Subscribes to a backend event; returns the function that unsubscribes. */
-export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed" | "ai-changed" | "ai-chunk" | "navigate" | "tray-shown", handler: (payload: T) => void): () => void {
+export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed" | "ai-changed" | "ai-chunk" | "navigate" | "tray-shown" | "update-progress", handler: (payload: T) => void): () => void {
   if (!inApp) {
     const listener = (e: Event) => handler((e as CustomEvent<T>).detail);
     window.addEventListener(`mock:${event}`, listener);
@@ -506,6 +516,8 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       { id: "jellyfin", name: "Jellyfin", category: "Media", tagline: "Your own Netflix for the films, shows and music on your PC.", description: "Jellyfin organises a folder of videos and music.", image: "jellyfin/jellyfin:latest", ports: [{ host: 8096, container: 8096 }], web: true, questions: [{ id: "media", label: "Your videos and music", hint: "A Windows folder.", kind: "folder", required: true, default: "%USERPROFILE%\\Videos" }], note: null, after: "Open it and follow the set-up.", download: "about a minute", accent: "#AA5CC3", website: "https://jellyfin.org" },
       { id: "postgres", name: "PostgreSQL", category: "Databases", tagline: "The popular open-source database.", description: "PostgreSQL for development.", image: "postgres:17", ports: [{ host: 5432, container: 5432 }], web: false, questions: [{ id: "password", label: "Password", hint: "For the user postgres.", kind: "password", required: true, default: null }], note: null, after: "Connect to localhost.", download: "under a minute", accent: "#336791", website: "https://www.postgresql.org" },
     ];
+    case "update_check": return { current: "0.1.1", available: new URLSearchParams(location.search).has("update") ? "0.2.0" : null, notes: "Copy and paste between Windows and desktop windows.\n\nAnd Pip learned a few new jokes." };
+    case "update_install": for (let i = 1; i <= 10; i++) { await new Promise((r) => setTimeout(r, 250)); emit("update-progress", [i * 590000, 5900000]); } return null;
     case "feedback_can_send": return true;
     case "feedback_report": return "TuxBridge 0.1.0\nWindows 11 Pro 24H2 (build 26100.1)\n\n---- WSL ----\nWSL version: 2.6.1.0\n\n---- systems ----\narch: arch, WSL 2, Hyprland, running, default\nUbuntu: not made by TuxBridge, WSL 2\n\n---- Docker ----\nTuxBridge's engine: running (29.9.2); Docker Desktop: not installed\n\n---- newest logs (0 of 0) ----\n";
     case "feedback_send": await new Promise((r) => setTimeout(r, 900)); return null;

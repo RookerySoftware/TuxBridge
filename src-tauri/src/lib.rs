@@ -12,6 +12,7 @@ mod paths;
 mod skills;
 mod store;
 mod system;
+mod updates;
 mod win;
 mod wsl;
 
@@ -718,6 +719,16 @@ fn skill_export(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn update_check(app: AppHandle) -> Result<updates::UpdateInfo, String> {
+    updates::check(&app).await
+}
+
+#[tauri::command]
+async fn update_install(app: AppHandle) -> Result<(), String> {
+    updates::install(&app).await
+}
+
+#[tauri::command]
 fn feedback_can_send() -> bool {
     feedback::can_send()
 }
@@ -878,6 +889,7 @@ pub fn run() {
         // Opening TuxBridge again while it sits in the tray shows the window it already has.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // Closing the window keeps TuxBridge in the tray (desktops, installs and Docker keep going);
         // Quit in the tray's menu ends it.
         .on_window_event(|window, event| match event {
@@ -968,6 +980,8 @@ pub fn run() {
             tray_hide,
             show_window,
             quit_app,
+            update_check,
+            update_install,
             feedback_can_send,
             feedback_report,
             feedback_send,

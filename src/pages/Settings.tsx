@@ -5,6 +5,7 @@ import { api, inApp, type Readiness, type Settings as SettingsData } from "../ap
 import { Button, Card, Field, Toggle, inputClass } from "../components/ui";
 import AssistantSettings from "../components/AssistantSettings";
 import SkillSettings from "../components/SkillSettings";
+import UpdateSettings from "../components/UpdateSettings";
 import Penguin from "../companion/Penguin";
 import { pointing, setPointing, startAppTour } from "../companion/store";
 import { useCompanionOn, useKidsMode } from "../prefs";
@@ -182,6 +183,8 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
 
       <AssistantSettings />
       <SkillSettings />
+
+      <UpdateSettings />
 
       <About readiness={readiness} />
       {saved && <p className="text-sm text-good">Saved.</p>}

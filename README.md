@@ -89,17 +89,22 @@ in `src-tauri/engine/VERSION`. Commit the result.
 
 1. Set the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`,
    and add it to [CHANGELOG.md](CHANGELOG.md).
-2. `pwsh .\scripts\notices.ps1` refreshes `THIRD-PARTY-NOTICES.md` (shipped with the installer).
-3. `pnpm tauri build` makes `src-tauri/target/release/bundle/nsis/TuxBridge_<version>_x64-setup.exe`,
-   with Pip on its pages (`src-tauri/installer/`) and the hook that upgrades earlier test builds
-   (`src-tauri/installer-hooks.nsh`).
-4. Commit, tag `v<version>`, and publish a GitHub release with the installer and its SHA-256
-   (`--prerelease` for a pre-release).
-5. Publishing the release puts it on tuxbridge.com by itself: the workflow
+2. `pwsh .\scripts\release-build.ps1` refreshes `THIRD-PARTY-NOTICES.md` and builds
+   `src-tauri/target/release/bundle/nsis/TuxBridge_<version>_x64-setup.exe` (Pip on its pages,
+   `src-tauri/installer/`; the hook that upgrades earlier test builds, `src-tauri/installer-hooks.nsh`)
+   and its **signature**, `…-setup.exe.sig`, made with the updater's private key
+   (`%USERPROFILE%\.tauri\tuxbridge-updater.key`; its public half is in `tauri.conf.json`). Keep
+   that key backed up: without it, installed copies can't update any more, only be reinstalled.
+3. Commit, tag `v<version>`, and publish a GitHub release with the installer **and its .sig**, the
+   changelog entry as its notes (`--prerelease` for a pre-release).
+4. Publishing the release puts it on tuxbridge.com by itself: the workflow
    `.github/workflows/publish-to-site.yml` copies the installer into the website repository,
-   updates its download section and the `/download/TuxBridge-setup.exe` redirect, and pushes;
-   Cloudflare Pages deploys it within a minute or two. (It needs the `WEBSITE_DEPLOY_KEY`
-   secret: a deploy key with write access to `RookerySoftware/tuxbridge-website`.)
+   updates its download section, the `/download/TuxBridge-setup.exe` redirect and
+   `download/latest.json` (what Settings → **Update TuxBridge** reads: version, notes, address and
+   signature), and pushes; Cloudflare Pages deploys it within a minute or two. (It needs the
+   `WEBSITE_DEPLOY_KEY` secret: a deploy key with write access to
+   `RookerySoftware/tuxbridge-website`. Without it, run `.github/scripts/publish_to_site.py`
+   against a local copy of the website and push.)
 
 ## Layout
 

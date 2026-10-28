@@ -3,13 +3,19 @@ folder and points the site at it (the Download button, the version, size and che
 "latest" redirect). Run by .github/workflows/publish-to-site.yml when a release is published.
 
     python publish_to_site.py --site <website checkout> --installer <setup.exe> --version 0.2.0 [--prerelease]
+        [--signature <setup.exe.sig>] [--notes <file with the release notes>]
+
+With --signature it also writes download/latest.json, which TuxBridge's updater reads (Settings →
+Update TuxBridge): the version, its notes, the installer's address and its signature.
 
 Keeps the newest few installers so links to recent versions keep working; older ones are removed
 to keep the website repository small.
 """
 
 import argparse
+import datetime
 import hashlib
+import json
 import re
 import shutil
 from pathlib import Path
@@ -30,6 +36,8 @@ def main():
     parser.add_argument("--installer", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--prerelease", action="store_true")
+    parser.add_argument("--signature", type=Path)
+    parser.add_argument("--notes", type=Path)
     args = parser.parse_args()
 
     version = args.version.removeprefix("v")
@@ -60,6 +68,22 @@ def main():
     redirects = redirects_path.read_text(encoding="utf-8")
     redirects = re.sub(r"(/download/TuxBridge-setup\.exe\s+)/download/\S+", rf"\g<1>/download/{name}", redirects)
     redirects_path.write_text(redirects, encoding="utf-8")
+
+    # What the updater reads. The signature is the .sig file the build made with the private key.
+    if args.signature:
+        notes = args.notes.read_text(encoding="utf-8").strip() if args.notes and args.notes.exists() else ""
+        latest = {
+            "version": version,
+            "notes": notes,
+            "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "platforms": {
+                "windows-x86_64": {
+                    "signature": args.signature.read_text(encoding="utf-8").strip(),
+                    "url": f"https://tuxbridge.com/download/{name}",
+                }
+            },
+        }
+        (downloads / "latest.json").write_text(json.dumps(latest, indent=2) + "\n", encoding="utf-8")
 
     # Only the newest few installers stay.
     installers = sorted(

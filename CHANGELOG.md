@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (pre-release), 2026-10-28
 
+- **Update TuxBridge** in Settings: checks for a newer version, shows what's new, and installs it
+  with one click; TuxBridge restarts by itself. Updates are signed, so nothing altered can be installed.
 - **Feedback:** report a bug or share an idea from the app, straight to the team (through Rookery's
   feedback service to Discord), with an optional diagnostic report (previewable, Windows user name
   hidden), or save it as a file. Failed tasks have **Report this**, which fills the report in.
+- **Licence:** TuxBridge is open source under the Apache License 2.0; the installer now includes
+  LICENSE and NOTICE alongside the third-party notices.
 
 ## 0.1.0 (pre-release), 2026-10-28
 
