@@ -1,4 +1,4 @@
-//! easywsl-agent: runs inside Linux, next to a desktop session, and hands it to the EasyWSL
+//! easywsl-agent: runs inside Linux, next to a desktop session, and hands it to the TuxBridge
 //! viewer on Windows. Frames go out on stdout, input comes in on stdin (see easywsl-protocol);
 //! the viewer starts it through wsl.exe, which carries both over WSL's own Hyper-V socket.
 //! Everything else (logs) goes to stderr.

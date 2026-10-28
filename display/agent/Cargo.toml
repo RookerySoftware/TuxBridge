@@ -2,7 +2,7 @@
 name = "easywsl-agent"
 version = "0.1.0"
 edition = "2024"
-description = "Runs inside Linux: hands the desktop to the EasyWSL viewer and its input to the desktop"
+description = "Runs inside Linux: hands the desktop to the TuxBridge viewer and its input to the desktop"
 
 [dependencies]
 easywsl-protocol = { path = "../protocol" }

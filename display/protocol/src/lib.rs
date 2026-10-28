@@ -1,4 +1,4 @@
-//! The messages between the EasyWSL display agent, which runs inside Linux next to the desktop,
+//! The messages between the TuxBridge display agent, which runs inside Linux next to the desktop,
 //! and the viewer, a window on Windows. They travel over the agent's stdin and stdout, which
 //! wsl.exe connects to the viewer through WSL's own Hyper-V socket: no network, no ports.
 //!

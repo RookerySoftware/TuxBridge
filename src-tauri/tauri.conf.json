@@ -43,7 +43,8 @@
       "bin/": "bin/",
       "skill/": "skill/",
       "../help/": "help/",
-      "../src/assistant/knowledge.md": "assistant/knowledge.md"
+      "../src/assistant/knowledge.md": "assistant/knowledge.md",
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
     },
     "shortDescription": "Linux on Windows, made easy",
     "windows": {

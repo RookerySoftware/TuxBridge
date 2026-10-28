@@ -34,7 +34,8 @@ function About({ readiness }: { readiness: Readiness }) {
       <div className="space-y-1 border-t border-line pt-3 text-xs text-muted">
         <p>
           Built with Tauri, React and Rust. The Hyprland desktop comes from hyprland-wsl; Docker Engine, Ollama and the Linux
-          systems are downloaded from their own projects.
+          systems are downloaded from their own projects. The open-source libraries inside TuxBridge, and their licences, are
+          listed in THIRD-PARTY-NOTICES.md in TuxBridge's install folder.
         </p>
         <p>
           Linux® is the registered trademark of Linus Torvalds. Windows and WSL are trademarks of Microsoft. The names of the

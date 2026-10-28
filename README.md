@@ -78,6 +78,16 @@ pwsh .\scripts\sync-engine.ps1 -Repo <hyprland-wsl clone> -Ref <branch or tag>
 copies hyprland-wsl's Linux side from that ref into `src-tauri/engine` and records the commit
 in `src-tauri/engine/VERSION`. Commit the result.
 
+## Releasing
+
+1. Set the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`,
+   and add it to [CHANGELOG.md](CHANGELOG.md).
+2. `pwsh .\scripts\notices.ps1` refreshes `THIRD-PARTY-NOTICES.md` (shipped with the installer).
+3. `pnpm tauri build` makes `src-tauri/target/release/bundle/nsis/TuxBridge_<version>_x64-setup.exe`,
+   with Pip on its pages (`src-tauri/installer/`) and the hook that upgrades earlier test builds
+   (`src-tauri/installer-hooks.nsh`).
+4. Commit, tag `v<version>`, and publish a GitHub release with the installer and its SHA-256.
+
 ## Layout
 
 | Path | What |
