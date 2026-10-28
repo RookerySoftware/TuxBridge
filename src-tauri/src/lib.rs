@@ -5,6 +5,7 @@ mod containers;
 mod desktop;
 mod docker;
 mod engine;
+mod feedback;
 mod install;
 mod jobs;
 mod paths;
@@ -716,6 +717,26 @@ fn skill_export(app: AppHandle) -> Result<String, String> {
     Ok(zip)
 }
 
+#[tauri::command]
+fn feedback_can_send() -> bool {
+    feedback::can_send()
+}
+
+#[tauri::command]
+async fn feedback_report(app: AppHandle) -> String {
+    feedback::build_report(&app).await
+}
+
+#[tauri::command]
+async fn feedback_send(app: AppHandle, request: feedback::Request) -> Result<(), String> {
+    feedback::send(&app, request).await
+}
+
+#[tauri::command]
+async fn feedback_save(app: AppHandle, request: feedback::Request) -> Result<String, String> {
+    feedback::save(&app, request).await
+}
+
 /// Brings the main window back from the tray (or from behind other windows).
 fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -947,6 +968,10 @@ pub fn run() {
             tray_hide,
             show_window,
             quit_app,
+            feedback_can_send,
+            feedback_report,
+            feedback_send,
+            feedback_save,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TuxBridge");

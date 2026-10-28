@@ -58,6 +58,21 @@ working on the UI; `?setup=featuresOff` and the like show the setup screens, `?s
 Tests against the real PC (WSL, the registry, Docker Hub): `cargo test -- --ignored` in
 `src-tauri`.
 
+### Feedback to Discord
+
+The Feedback page sends to a Discord channel through a webhook that is built into the app, never
+stored in this repository. Set it before building:
+
+```powershell
+$env:TUXBRIDGE_FEEDBACK_WEBHOOK = "https://discord.com/api/webhooks/…"   # this terminal only
+pnpm tauri build
+```
+
+(or once for good, as a user environment variable). A build without it still works: the page then
+offers **Save as a file** only. Anyone holding a built installer could in principle extract the
+webhook, so the app allows one send a minute; if it is ever abused, delete the webhook in Discord
+and make a new one.
+
 ## The display
 
 `display/` holds TuxBridge's own display, used for every desktop (GNOME, Xfce, Cinnamon, Hyprland):

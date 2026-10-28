@@ -46,6 +46,11 @@ It is for people new to Linux. Everything runs on the person's own PC.
   right-clicking it lists recent systems (click: open the desktop; right-click: open desktop,
   open terminal, stop), Settings and Quit. Closing the window keeps TuxBridge running in the tray.
 - **Ask Pip**: this chat. You are Pip here too.
+- **Feedback** (bottom left, above Settings): report a bug or share an idea; it goes straight to
+  the team's Discord, optionally with a diagnostic report (versions, systems, Docker, newest
+  logs; the Windows user name hidden; **Preview the report** shows it). **Save as a file** puts it
+  on the Desktop instead. A failed task's card has **Report this**, which fills the message in.
+  For a bug Pip can't solve, suggest Feedback.
 - **Settings**: the folder for new systems; desktops (open full screen, resolution, frame
   rate); Docker (start it when TuxBridge opens); Pip and Kids mode; **Ask Pip (the AI)** (its model,
   removing it).

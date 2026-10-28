@@ -138,6 +138,12 @@ loads. On PCs with little graphics memory, choose the *Small* size in Settings. 
 
 ## Reporting a problem
 
+The easiest way: **Feedback** (bottom left) sends your message straight to the people who make
+TuxBridge, with a diagnostic report if you leave it on (versions, your systems, Docker's status
+and the newest logs, with your Windows user name hidden; **Preview the report** shows exactly
+what's in it). A task that failed has **Report this**, which fills the message in for you.
+Offline, or prefer email? **Save as a file** puts it all on your Desktop to send another way.
+
 Every install and change has a log; **Show the log file** on its card opens it. TuxBridge's logs
 are in `%LOCALAPPDATA%\TuxBridge\logs` (on a PC that had TuxBridge under an earlier name:
 `%LOCALAPPDATA%\EasyWSL\logs` or `%LOCALAPPDATA%\Pengi\logs`). Include:

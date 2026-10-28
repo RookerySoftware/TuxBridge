@@ -1,9 +1,10 @@
 // A running or finished job (installing a system, adding Hyprland): its steps with their state,
 // what the tools print right now, and on failure the reason and the log.
 
-import { AlertTriangle, Check, Circle, FileText, Loader2, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Bug, Check, Circle, FileText, Loader2, Sparkles, X } from "lucide-react";
 import { api, type Job } from "../api";
 import { askAbout, useAssistant } from "../assistant/store";
+import { reportProblem } from "../feedback/store";
 import { Button, Card, IconButton } from "./ui";
 
 function StepIcon({ state }: { state: Job["steps"][number]["state"] }) {
@@ -17,6 +18,16 @@ function StepIcon({ state }: { state: Job["steps"][number]["state"] }) {
     default:
       return <Circle className="size-3.5 text-line" />;
   }
+}
+
+/** Opens the Feedback page with the failure written out; the diagnostic report adds the logs. */
+function report(job: Job) {
+  const step = job.steps.find((s) => s.state === "failed")?.title;
+  reportProblem(
+    `"${job.title}" didn't finish${step ? `, at the step "${step}"` : ""}.\n` +
+      `It said: ${job.error ?? "no reason given"}\n\n` +
+      "What I was doing: ",
+  );
 }
 
 /** Opens the assistant with the failure, the step and the end of the log. */
@@ -98,6 +109,11 @@ export default function JobCard({ job, onDismiss }: { job: Job; onDismiss: () =>
           {failed && assistant && job.kind !== "assistant" && (
             <Button icon={<Sparkles className="size-4" />} onClick={() => ask(job)}>
               Ask Pip
+            </Button>
+          )}
+          {failed && (
+            <Button icon={<Bug className="size-4" />} onClick={() => report(job)}>
+              Report this
             </Button>
           )}
           <Button variant="ghost" icon={<FileText className="size-4" />} onClick={() => api.reveal(job.log)}>

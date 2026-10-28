@@ -221,6 +221,15 @@ export interface SkillTarget {
   path: string;
 }
 
+export type FeedbackKind = "bug" | "idea" | "other";
+
+export interface FeedbackRequest {
+  kind: FeedbackKind;
+  message: string;
+  name: string;
+  includeReport: boolean;
+}
+
 export const inApp = "__TAURI_INTERNALS__" in window;
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -290,6 +299,11 @@ export const api = {
   /** Shows the main window, on a page if given. */
   showWindow: (page?: string) => call<void>("show_window", { page }),
   quit: () => call<void>("quit_app"),
+  /** The Feedback page: whether this build can send to Discord, the diagnostic report, sending, saving. */
+  feedbackCanSend: () => call<boolean>("feedback_can_send"),
+  feedbackReport: () => call<string>("feedback_report"),
+  feedbackSend: (request: FeedbackRequest) => call<void>("feedback_send", { request }),
+  feedbackSave: (request: FeedbackRequest) => call<string>("feedback_save", { request }),
   listSessions: () => call<Session[]>("list_sessions"),
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<void>("set_settings", { settings }),
@@ -492,6 +506,10 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       { id: "jellyfin", name: "Jellyfin", category: "Media", tagline: "Your own Netflix for the films, shows and music on your PC.", description: "Jellyfin organises a folder of videos and music.", image: "jellyfin/jellyfin:latest", ports: [{ host: 8096, container: 8096 }], web: true, questions: [{ id: "media", label: "Your videos and music", hint: "A Windows folder.", kind: "folder", required: true, default: "%USERPROFILE%\\Videos" }], note: null, after: "Open it and follow the set-up.", download: "about a minute", accent: "#AA5CC3", website: "https://jellyfin.org" },
       { id: "postgres", name: "PostgreSQL", category: "Databases", tagline: "The popular open-source database.", description: "PostgreSQL for development.", image: "postgres:17", ports: [{ host: 5432, container: 5432 }], web: false, questions: [{ id: "password", label: "Password", hint: "For the user postgres.", kind: "password", required: true, default: null }], note: null, after: "Connect to localhost.", download: "under a minute", accent: "#336791", website: "https://www.postgresql.org" },
     ];
+    case "feedback_can_send": return true;
+    case "feedback_report": return "TuxBridge 0.1.0\nWindows 11 Pro 24H2 (build 26100.1)\n\n---- WSL ----\nWSL version: 2.6.1.0\n\n---- systems ----\narch: arch, WSL 2, Hyprland, running, default\nUbuntu: not made by TuxBridge, WSL 2\n\n---- Docker ----\nTuxBridge's engine: running (29.9.2); Docker Desktop: not installed\n\n---- newest logs (0 of 0) ----\n";
+    case "feedback_send": await new Promise((r) => setTimeout(r, 900)); return null;
+    case "feedback_save": return "tuxbridge-feedback-1793191320.txt";
     default: return null;
   }
 }

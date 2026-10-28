@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Boxes, GraduationCap, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon } from "lucide-react";
+import { Boxes, GraduationCap, HelpCircle, Loader2, MessageSquareHeart, Monitor, PackagePlus, Settings as SettingsIcon } from "lucide-react";
 import { api, on, type Readiness } from "./api";
 import { useDistros, useJobs, useSessions } from "./state";
 import Setup from "./pages/Setup";
@@ -9,12 +9,14 @@ import Settings from "./pages/Settings";
 import Docker from "./pages/Docker";
 import Learn from "./pages/Learn";
 import Help from "./pages/Help";
+import Feedback from "./pages/Feedback";
+import { onReportProblem } from "./feedback/store";
 import Assistant, { useAiStatus } from "./pages/Assistant";
 import { onOpen } from "./assistant/store";
 import Companion from "./companion/Companion";
 import Penguin from "./companion/Penguin";
 
-type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "settings";
+type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "feedback" | "settings";
 
 const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { page: "systems", label: "My systems", icon: <Monitor className="size-4" /> },
@@ -38,6 +40,8 @@ function Main({ readiness }: { readiness: Readiness }) {
   // Known early, so "Ask Pip" buttons elsewhere know whether it is there.
   useAiStatus();
   useEffect(() => onOpen(() => setPage("assistant")), []);
+  // A failed task's "Report this" opens the Feedback page with the failure filled in.
+  useEffect(() => onReportProblem(() => setPage("feedback")), []);
   // The tray menu's Settings (and the like) open the window on a page.
   useEffect(() => on<string>("navigate", (p) => setPage(p as Page)), []);
   // Docker's jobs (turning it on, installing apps) show on its own page.
@@ -74,7 +78,15 @@ function Main({ readiness }: { readiness: Readiness }) {
             </button>
           ))}
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto space-y-0.5">
+          <button
+            data-tour="nav:feedback"
+            onClick={() => setPage("feedback")}
+            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition
+              ${page === "feedback" ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}
+          >
+            <MessageSquareHeart className="size-4" /> Feedback
+          </button>
           <button
             data-tour="nav:settings"
             onClick={() => setPage("settings")}
@@ -104,6 +116,7 @@ function Main({ readiness }: { readiness: Readiness }) {
         {page === "learn" && <Learn distros={distros ?? []} onGetLinux={() => setPage("get")} />}
         {page === "assistant" && <Assistant jobs={assistantJobs} onDismissJob={dismiss} onHelp={help} />}
         {page === "help" && <Help topic={topic} onTopic={setTopic} />}
+        {page === "feedback" && <Feedback />}
         {page === "settings" && <Settings readiness={readiness} />}
       </main>
       <Companion page={page} distros={distros} onGo={setPage} onHelp={help} />

@@ -1,4 +1,6 @@
 fn main() {
+    // The Feedback page's Discord webhook is built in from this variable (src/feedback.rs).
+    println!("cargo:rerun-if-env-changed=TUXBRIDGE_FEEDBACK_WEBHOOK");
     // The app manifest is linked in by hand rather than by tauri-build, so test programs get it
     // too: they link Tauri's window code, which needs Windows' common controls version 6.
     let windows = tauri_build::WindowsAttributes::new_without_app_manifest();

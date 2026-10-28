@@ -3,7 +3,7 @@
 
 import type { Mood } from "./Penguin";
 
-export type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "settings";
+export type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "feedback" | "settings";
 
 /** A button in Pip's bubble. */
 export interface Action {
@@ -95,6 +95,14 @@ export const pageTips: Record<Page, { normal: string[]; kids: string[] }> = {
     ],
     kids: ["These are guides, like an instruction book. Try searching for **files**!"],
   },
+  feedback: {
+    normal: [
+      "Found a bug or have an idea? Write it here and I'll carry it straight to the team. Thanks for testing!",
+      "Leave **Include a diagnostic report** on for bugs: it tells the team your versions and what happened, without your user name.",
+      "A task that failed has a **Report this** button that fills this in for you.",
+    ],
+    kids: ["Something not working? Ask a grown-up to help you tell the team here."],
+  },
   settings: {
     normal: [
       "Here you can turn me on or off, switch on **Kids mode**, or watch the welcome tour again.",
@@ -114,6 +122,10 @@ export const explanations: [string, string][] = [
   ["Learn", "Guided lessons, hands-on challenges and Kids mode."],
   ["Ask Pip", "Ask me anything about TuxBridge, Linux, WSL, Windows and Docker. My AI runs on this PC."],
   ["Help", "Guides for everything in TuxBridge and Linux, with a search."],
+  ["Feedback", "Tell the team about a problem or an idea. I'll carry it over."],
+  ["Report this", "Opens Feedback with this failure filled in, so the team can fix it."],
+  ["Preview the report", "Shows exactly what the diagnostic report contains before you send it."],
+  ["Save as a file", "Saves your message and the report as a text file on your Desktop."],
   ["Settings", "Where new systems go, desktop options, Docker, my AI, Kids mode and me."],
   ["Terminal", "Opens a command line in this system: you type a command, press Enter, and it runs."],
   ["Open desktop", "Opens this system's desktop in its own window. Close the window to end the session."],
@@ -148,7 +160,7 @@ export const explanations: [string, string][] = [
   ["Kids mode", "Switches to friendly projects for children, and turns me into a teacher!"],
   ["Search the guides", "Search all the guides. Try `\"exact words\"`, `-leave-out`, `title:`, `in:ubuntu` or `code:apt`."],
   ["Other ways to open", "More ways to open this system: its terminal, or another desktop."],
-  ["Send", "Sends your question to me."],
+  ["Send", "Sends your message: to me on Ask Pip, or to the team on Feedback."],
   ["Hint", "Shows a clue. No penalty for peeking!"],
   ["Check", "Checks the flag you typed."],
   ["Set up and open terminal", "Builds the practice files in the system you picked, then opens a terminal right there."],
