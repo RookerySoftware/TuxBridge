@@ -1,35 +1,35 @@
 //! The Feedback page: a message (and, if the person agrees, a diagnostic report) sent to Rookery
-//! Software's Discord channel, or saved as a file to send another way.
+//! Software, or saved as a file to send another way.
 //!
-//! The Discord webhook is built in when the app is compiled, from the `TUXBRIDGE_FEEDBACK_WEBHOOK`
-//! environment variable, so it never sits in the repository. A build without it can still save
-//! reports as files.
+//! Reports go to Rookery's feedback endpoint (a Cloudflare Worker, RookerySoftware/feedback),
+//! which checks them, limits how often one address may send, and forwards them to the team's
+//! Discord. The Discord webhook is a secret of that Worker, never in the app.
 
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use winreg::RegKey;
 use winreg::enums::HKEY_LOCAL_MACHINE;
 
-/// Shortest gap between two sends, so a stuck button can't flood the channel.
+/// Where reports go. A build can point elsewhere (a test Worker) with TUXBRIDGE_FEEDBACK_URL.
+const ENDPOINT: &str = match option_env!("TUXBRIDGE_FEEDBACK_URL") {
+    Some(url) => url,
+    None => "https://feedback.rookerysoftware.app/v1/report",
+};
+
+/// Shortest gap between two sends from this app; the endpoint has its own limit too.
 const SEND_GAP: Duration = Duration::from_secs(60);
 static LAST_SENT: Mutex<Option<Instant>> = Mutex::new(None);
 
-fn webhook() -> Option<&'static str> {
-    option_env!("TUXBRIDGE_FEEDBACK_WEBHOOK")
-        .map(str::trim)
-        .filter(|u| u.starts_with("https://discord.com/api/webhooks/") || u.starts_with("https://discordapp.com/api/webhooks/"))
-}
-
-/// Whether this build can send to Discord (otherwise the page offers saving a file only).
+/// Whether this build can send (otherwise the page offers saving a file only).
 pub fn can_send() -> bool {
-    webhook().is_some()
+    ENDPOINT.starts_with("https://")
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
     Bug,
@@ -43,13 +43,6 @@ impl Kind {
             Kind::Bug => "🐞 Bug report",
             Kind::Idea => "💡 Idea",
             Kind::Other => "💬 Feedback",
-        }
-    }
-    fn color(self) -> u32 {
-        match self {
-            Kind::Bug => 0xF06E6E,
-            Kind::Idea => 0x2FB8AA,
-            Kind::Other => 0x6C8DFF,
         }
     }
 }
@@ -178,45 +171,49 @@ fn truncate(s: &str, max: usize) -> String {
 }
 
 pub async fn send(app: &AppHandle, req: Request) -> Result<(), String> {
-    let url = webhook().ok_or("This build of TuxBridge can't send feedback; save it as a file instead.")?;
+    if !can_send() {
+        return Err("This build of TuxBridge can't send feedback; save it as a file instead.".into());
+    }
     if let Some(at) = *LAST_SENT.lock().unwrap() {
         let wait = SEND_GAP.saturating_sub(at.elapsed());
         if !wait.is_zero() {
             return Err(format!("Please wait {} seconds before sending again.", wait.as_secs() + 1));
         }
     }
-    let report = if req.include_report { Some(build_report(app).await) } else { None };
-    let from = if req.name.trim().is_empty() { "anonymous".to_string() } else { truncate(req.name.trim(), 100) };
-    let payload = serde_json::json!({
-        "username": "TuxBridge feedback",
-        "allowed_mentions": { "parse": [] },
-        "embeds": [{
-            "title": req.kind.title(),
-            "description": truncate(if req.message.trim().is_empty() { "(no message)" } else { req.message.trim() }, 3900),
-            "color": req.kind.color(),
-            "fields": [
-                { "name": "Version", "value": app.package_info().version.to_string(), "inline": true },
-                { "name": "Windows", "value": truncate(&windows_version(), 200), "inline": true },
-                { "name": "From", "value": from, "inline": true },
-                { "name": "Report", "value": if report.is_some() { "attached" } else { "not included" }, "inline": true },
-            ],
-        }],
+    let report = if req.include_report { Some(fit_report(build_report(app).await)) } else { None };
+    let body = serde_json::json!({
+        "app": "tuxbridge",
+        "version": app.package_info().version.to_string(),
+        "windows": truncate(&windows_version(), 200),
+        "kind": req.kind,
+        "message": truncate(req.message.trim(), 4000),
+        "name": truncate(req.name.trim(), 100),
+        "report": report,
     });
-    let mut form = reqwest::multipart::Form::new().text("payload_json", payload.to_string());
-    if let Some(report) = report {
-        let part = reqwest::multipart::Part::bytes(report.into_bytes()).file_name("tuxbridge-report.txt").mime_str("text/plain").map_err(|e| e.to_string())?;
-        form = form.part("files[0]", part);
-    }
     let client = reqwest::Client::builder().user_agent("TuxBridge").timeout(Duration::from_secs(30)).build().map_err(|e| e.to_string())?;
-    let response = client.post(url).multipart(form).send().await.map_err(|_| "Couldn't reach Discord. Are you online?".to_string())?;
-    match response.status().as_u16() {
-        200 | 204 => {
-            *LAST_SENT.lock().unwrap() = Some(Instant::now());
-            Ok(())
-        }
-        429 => Err("Too many messages just now; try again in a minute.".into()),
-        code => Err(format!("Discord answered with error {code}.")),
+    let response = client.post(ENDPOINT).json(&body).send().await.map_err(|_| "Couldn't reach the feedback service. Are you online?".to_string())?;
+    let status = response.status();
+    if status.is_success() {
+        *LAST_SENT.lock().unwrap() = Some(Instant::now());
+        return Ok(());
     }
+    // The endpoint explains a refusal in words meant for people.
+    let reason = response.json::<serde_json::Value>().await.ok().and_then(|v| v["error"].as_str().map(str::to_string));
+    Err(reason.unwrap_or_else(|| format!("The feedback service answered with error {}.", status.as_u16())))
+}
+
+/// The endpoint takes reports up to 256 KB: a longer one keeps its start (the versions and
+/// systems) and loses the oldest log lines.
+fn fit_report(report: String) -> String {
+    const MAX: usize = 250 * 1024;
+    if report.len() <= MAX {
+        return report;
+    }
+    let mut cut = MAX;
+    while !report.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    format!("{}\n…(cut to fit)", &report[..cut])
 }
 
 /// Saves the message and the report as a text file on the Desktop, and shows it in Explorer.

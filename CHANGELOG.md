@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- **Feedback:** report a bug or share an idea from the app, straight to the team's Discord, with an
-  optional diagnostic report (previewable, Windows user name hidden), or save it as a file. Failed
-  tasks have **Report this**, which fills the report in.
+- **Feedback:** report a bug or share an idea from the app, straight to the team (through Rookery's
+  feedback service to Discord), with an optional diagnostic report (previewable, Windows user name
+  hidden), or save it as a file. Failed tasks have **Report this**, which fills the report in.
 
 ## 0.1.0 (pre-release), 2026-10-28
 
