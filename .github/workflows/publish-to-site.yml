@@ -1,0 +1,72 @@
+# Puts each published release's installer on tuxbridge.com: copies it into
+# RookerySoftware/tuxbridge-website (download/), updates the download section and the "latest"
+# redirect, and pushes; Cloudflare Pages then deploys the site by itself.
+#
+# Needs the secret WEBSITE_DEPLOY_KEY: the private half of a deploy key with write access to
+# tuxbridge-website (its public half is under that repository's Settings → Deploy keys).
+# Run it by hand (Actions → Publish release to tuxbridge.com → Run workflow) to republish a tag.
+
+name: Publish release to tuxbridge.com
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (e.g. v0.1.0)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-to-site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Get the publishing script
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Download the installer
+        id: release
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --dir installer
+          count=$(ls installer/*-setup.exe | wc -l)
+          if [ "$count" -ne 1 ]; then echo "::error::Expected one *-setup.exe in $TAG, found $count"; exit 1; fi
+          echo "installer=$(ls installer/*-setup.exe)" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the website
+        uses: actions/checkout@v5
+        with:
+          repository: RookerySoftware/tuxbridge-website
+          ssh-key: ${{ secrets.WEBSITE_DEPLOY_KEY }}
+          path: website
+
+      - name: Put the installer on the site
+        run: |
+          flag=""
+          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then flag="--prerelease"; fi
+          python3 .github/scripts/publish_to_site.py --site website --installer "${{ steps.release.outputs.installer }}" --version "$TAG" $flag
+
+      - name: Push
+        working-directory: website
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The site already has $TAG; nothing to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Download TuxBridge ${TAG#v} from the site" -m "Published by the TuxBridge release workflow from $GITHUB_REPOSITORY $TAG."
+          git push

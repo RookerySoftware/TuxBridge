@@ -86,7 +86,13 @@ in `src-tauri/engine/VERSION`. Commit the result.
 3. `pnpm tauri build` makes `src-tauri/target/release/bundle/nsis/TuxBridge_<version>_x64-setup.exe`,
    with Pip on its pages (`src-tauri/installer/`) and the hook that upgrades earlier test builds
    (`src-tauri/installer-hooks.nsh`).
-4. Commit, tag `v<version>`, and publish a GitHub release with the installer and its SHA-256.
+4. Commit, tag `v<version>`, and publish a GitHub release with the installer and its SHA-256
+   (`--prerelease` for a pre-release).
+5. Publishing the release puts it on tuxbridge.com by itself: the workflow
+   `.github/workflows/publish-to-site.yml` copies the installer into the website repository,
+   updates its download section and the `/download/TuxBridge-setup.exe` redirect, and pushes;
+   Cloudflare Pages deploys it within a minute or two. (It needs the `WEBSITE_DEPLOY_KEY`
+   secret: a deploy key with write access to `RookerySoftware/tuxbridge-website`.)
 
 ## Layout
 
