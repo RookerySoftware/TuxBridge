@@ -35,9 +35,9 @@ function SetUp({ status, busy }: { status: AiStatus; busy: boolean }) {
       <div className="flex items-start gap-4">
         <Penguin size={52} mood="happy" className="shrink-0" />
         <div className="space-y-1">
-          <h2 className="font-display text-lg font-semibold">Pip, an AI that knows Linux and EasyWSL</h2>
+          <h2 className="font-display text-lg font-semibold">Pip, an AI that knows Linux and Pengi</h2>
           <p className="text-muted">
-            Ask Pip anything about EasyWSL, Linux, WSL, Windows or Docker, in your own words. Pip knows EasyWSL's guides and sees
+            Ask Pip anything about Pengi, Linux, WSL, Windows or Docker, in your own words. Pip knows Pengi's guides and sees
             which systems and containers you have, so its answers fit your PC.
           </p>
         </div>
@@ -225,7 +225,7 @@ function Chat({ status, onHelp }: { status: AiStatus; onHelp: (topic: string) =>
               <Penguin size={64} mood="happy" className="mx-auto" />
               <div>
                 <h2 className="font-display text-lg font-semibold">Hi! What do you want to do?</h2>
-                <p className="text-sm text-muted">Ask about EasyWSL, Linux, WSL, Windows or Docker.</p>
+                <p className="text-sm text-muted">Ask about Pengi, Linux, WSL, Windows or Docker.</p>
               </div>
               <div className="mx-auto grid max-w-2xl gap-2 sm:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
@@ -317,7 +317,7 @@ export default function Assistant({ jobs, onDismissJob, onHelp }: { jobs: Job[];
     <div className="max-w-3xl space-y-6">
       <header className="space-y-1">
         <h1 className="font-display text-2xl font-semibold">Ask Pip</h1>
-        <p className="text-muted">Pip answers questions about EasyWSL, Linux, WSL, Windows and Docker, with an AI on your own PC.</p>
+        <p className="text-muted">Pip answers questions about Pengi, Linux, WSL, Windows and Docker, with an AI on your own PC.</p>
       </header>
       {jobs.map((j) => (
         <JobCard key={j.id} job={j} onDismiss={() => onDismissJob(j.id)} />

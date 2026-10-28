@@ -20,7 +20,7 @@ gimp &                         # & gives the terminal back
 Installed apps with a menu entry also appear in Windows' **Start menu**, in a folder named after
 the system.
 
-Inside a desktop opened from EasyWSL (GNOME, Cinnamon, Xfce, Hyprland), programs open on that
+Inside a desktop opened from Pengi (GNOME, Cinnamon, Xfce, Hyprland), programs open on that
 desktop instead.
 
 ## The graphics card (GPU)

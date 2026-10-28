@@ -81,7 +81,7 @@ Linux → Windows.
 ## Opening Linux in Windows Terminal
 
 Windows Terminal adds a profile for each system. Set your favourite as the default
-profile in its settings, or start a tab with `wt -p "Ubuntu"`. EasyWSL's **Terminal** button
+profile in its settings, or start a tab with `wt -p "Ubuntu"`. Pengi's **Terminal** button
 uses Windows Terminal when it's installed.
 
 ## Shortcuts in File Explorer

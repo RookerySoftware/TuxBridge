@@ -1,12 +1,12 @@
 #!/bin/bash
-# Installs a distro's own desktop (Cinnamon, KDE Plasma, Xfce, GNOME) and what EasyWSL's display
+# Installs a distro's own desktop (Cinnamon, KDE Plasma, Xfce, GNOME) and what Pengi's display
 # agent needs: a virtual X server (Xvfb) for the X11 desktops, which desktop-start.sh runs them
 # on, and the libraries the agent links (PipeWire's and xkbcommon). Run as root inside the distro:
 #
 #   desktop-setup.sh DESKTOP USER        DESKTOP: cinnamon | kde | xfce | gnome
 #
-# The desktop is shown on Windows through EasyWSL's viewer, like the Hyprland desktop. No login
-# screen or display manager is installed: EasyWSL starts the session.
+# The desktop is shown on Windows through Pengi's viewer, like the Hyprland desktop. No login
+# screen or display manager is installed: Pengi starts the session.
 
 set -euo pipefail
 DESKTOP=${1:?desktop}
@@ -101,6 +101,6 @@ if [ -d /run/systemd/system ]; then
 fi
 mkdir -p /etc/easywsl
 echo "$DESKTOP" > /etc/easywsl/desktop
-# Whose desktop it is, for EasyWSL to find again (a system can have several accounts).
+# Whose desktop it is, for Pengi to find again (a system can have several accounts).
 echo "$U" > /etc/easywsl/desktop-user
 echo "The $DESKTOP desktop is installed for $U."

@@ -1,12 +1,18 @@
-//! Where EasyWSL keeps its files, and how a Windows path looks from inside WSL.
+//! Where Pengi keeps its files, and how a Windows path looks from inside WSL.
 
 use std::path::{Path, PathBuf};
 
-/// %LOCALAPPDATA%\EasyWSL: settings, logs, downloads, the unpacked engine.
+/// %LOCALAPPDATA%\Pengi: settings, logs, downloads, the unpacked engine. A PC that ran Pengi
+/// under its earlier name, EasyWSL, keeps %LOCALAPPDATA%\EasyWSL: its systems' disks, Docker's
+/// certificates and the docker command's place on the PATH all point there, so it isn't moved.
 pub fn data_dir() -> PathBuf {
-    dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from(r"C:\Users\Public"))
-        .join("EasyWSL")
+    static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        let local = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from(r"C:\Users\Public"));
+        let (new, old) = (local.join("Pengi"), local.join("EasyWSL"));
+        if !new.join("state.json").exists() && old.join("state.json").exists() { old } else { new }
+    })
+    .clone()
 }
 
 pub fn logs_dir() -> PathBuf {

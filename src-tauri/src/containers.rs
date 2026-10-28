@@ -1,4 +1,4 @@
-//! Docker: EasyWSL's own engine, the `docker` command for Windows, and the containers.
+//! Docker: Pengi's own engine, the `docker` command for Windows, and the containers.
 //!
 //! The engine is the free Docker Engine in a small Alpine Linux system of its own
 //! (easywsl-docker, set up by linux/docker-engine.sh). It listens on 127.0.0.1:2376, which WSL
@@ -28,7 +28,7 @@ pub const DISTRO: &str = "easywsl-docker";
 const ADDRESS: &str = "tcp://127.0.0.1:2376";
 const DESKTOP_PIPE: &str = r"\\.\pipe\dockerDesktopLinuxEngine";
 
-/// %LOCALAPPDATA%\EasyWSL\docker: the client's TLS files (tls\) and the docker command's own
+/// %LOCALAPPDATA%\Pengi\docker: the client's TLS files (tls\) and the docker command's own
 /// settings for the app's calls (config\), apart from the user's.
 fn home() -> PathBuf {
     paths::data_dir().join("docker")
@@ -38,7 +38,7 @@ fn tls() -> PathBuf {
     home().join("tls")
 }
 
-/// The folder EasyWSL's docker.exe is in; added to the user's PATH when no other docker is.
+/// The folder Pengi's docker.exe is in; added to the user's PATH when no other docker is.
 pub fn bin_dir() -> PathBuf {
     paths::data_dir().join("bin")
 }
@@ -100,7 +100,7 @@ async fn run(engine: Engine, args: &[&str], limit: Duration) -> Result<String, S
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
-    /// EasyWSL's engine is set up (its system, the docker command and the certificates).
+    /// Pengi's engine is set up (its system, the docker command and the certificates).
     pub installed: bool,
     pub running: bool,
     pub version: Option<String>,
@@ -184,7 +184,7 @@ pub async fn stop() -> Result<(), String> {
 
 /// Downloads `url` to `path`, logging progress, and returns the file's SHA-256 (hex).
 pub(crate) async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<String> {
-    let client = reqwest::Client::builder().user_agent("EasyWSL").build()?;
+    let client = reqwest::Client::builder().user_agent("Pengi").build()?;
     let response = client.get(url).send().await?.error_for_status()?;
     let total = response.content_length().unwrap_or(0);
     if let Some(dir) = path.parent() {
@@ -212,7 +212,7 @@ pub(crate) async fn fetch(job: &Job, url: &str, path: &Path) -> anyhow::Result<S
 }
 
 pub(crate) async fn text(url: &str) -> anyhow::Result<String> {
-    let client = reqwest::Client::builder().user_agent("EasyWSL").build()?;
+    let client = reqwest::Client::builder().user_agent("Pengi").build()?;
     Ok(client.get(url).send().await?.error_for_status()?.text().await?)
 }
 
@@ -260,7 +260,7 @@ fn make_certificates(server_dir: &Path, client_dir: &Path) -> anyhow::Result<()>
     let mut ca = CertificateParams::new(Vec::<String>::new())?;
     ca.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
     ca.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign, KeyUsagePurpose::DigitalSignature];
-    ca.distinguished_name.push(DnType::CommonName, "EasyWSL Docker engine");
+    ca.distinguished_name.push(DnType::CommonName, "Pengi Docker engine");
     let ca_cert = ca.self_signed(&ca_key)?;
     let issuer = Issuer::new(ca, ca_key);
 
@@ -274,7 +274,7 @@ fn make_certificates(server_dir: &Path, client_dir: &Path) -> anyhow::Result<()>
     let client_key = KeyPair::generate()?;
     let mut client = CertificateParams::new(Vec::<String>::new())?;
     client.extended_key_usages = vec![ExtendedKeyUsagePurpose::ClientAuth];
-    client.distinguished_name.push(DnType::CommonName, "EasyWSL");
+    client.distinguished_name.push(DnType::CommonName, "Pengi");
     let client_cert = client.signed_by(&client_key, &issuer)?;
 
     std::fs::create_dir_all(server_dir)?;
@@ -336,7 +336,7 @@ async fn set_up_context(job: &Job) {
     };
     let exists = user_docker(&["context", "inspect", "easywsl"]).stdout(Stdio::null()).stderr(Stdio::null()).status().await.is_ok_and(|s| s.success());
     let verb = if exists { "update" } else { "create" };
-    let _ = job.run(user_docker(&["context", verb, "easywsl", "--description", "EasyWSL's Docker engine", "--docker", &spec]), None).await;
+    let _ = job.run(user_docker(&["context", verb, "easywsl", "--description", "Pengi's Docker engine", "--docker", &spec]), None).await;
     if !desktop_installed() {
         let _ = job.run(user_docker(&["context", "use", "easywsl"]), None).await;
     }
@@ -624,7 +624,7 @@ async fn containers_of(engine: Engine) -> Result<Vec<Container>, String> {
         .collect())
 }
 
-/// The containers of every running engine: EasyWSL's, and Docker Desktop's.
+/// The containers of every running engine: Pengi's, and Docker Desktop's.
 pub async fn containers() -> Vec<Container> {
     let mut all = Vec::new();
     if installed() {

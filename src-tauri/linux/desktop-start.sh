@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs a distro's own desktop (installed by desktop-setup.sh) on a virtual X server (Xvfb) and
-# hands it to EasyWSL's viewer through easywsl-agent, whose stdin and stdout are this script's
+# hands it to Pengi's viewer through easywsl-agent, whose stdin and stdout are this script's
 # (wsl.exe connects them to the viewer). Run as root inside the distro:
 #
 #   desktop-start.sh run USER DESKTOP WIDTHxHEIGHT AGENT [SCALE [FPS]]   until the viewer closes or

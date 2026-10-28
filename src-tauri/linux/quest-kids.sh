@@ -1,7 +1,7 @@
 #!/bin/bash
 # Kids' Treasure Hunt: a gentle first taste of the terminal. It builds a play folder in
 # ~/treasure-hunt full of little challenges that teach ls, cd, cat and making files. Every
-# treasure is a word like STAR{...}; the child types it into EasyWSL's Learn page. Needs only
+# treasure is a word like STAR{...}; the child types it into Pengi's Learn page. Needs only
 # bash and coreutils, so it works on every system. Running it again starts the hunt over.
 #
 # The treasures are checked by the app against their SHA-256; keep src/learn/quests.ts in step.
@@ -17,7 +17,7 @@ cat > START-HERE.txt << 'EOF'
 
 Hello, explorer! Treasures are hidden all around this folder. Each one looks
 like STAR{something}. When you find a treasure, type it into the Learn page in
-EasyWSL to collect it.
+Pengi to collect it.
 
 Three commands do everything:
     ls              look around   (what is here?)

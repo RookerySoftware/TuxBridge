@@ -66,7 +66,7 @@ Menu → **System Settings** (or `cinnamon-settings`). Worth knowing:
 | Nemo (Files) | File manager with tabs, split view (**F3**), and an "Open in terminal" menu |
 | Xed | Text editor |
 | Software Manager | An app store with a window (includes Flatpaks) |
-| Update Manager | Updates with a window (EasyWSL's **Update** works too) |
+| Update Manager | Updates with a window (Pengi's **Update** works too) |
 | Xviewer, Xreader | Images, PDFs |
 
 ## If something looks wrong

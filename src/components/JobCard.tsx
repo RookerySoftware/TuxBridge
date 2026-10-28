@@ -25,7 +25,7 @@ async function ask(job: Job) {
   const log = await api.jobLogTail(job.id).catch(() => "");
   const fence = "```";
   askAbout(
-    `"${job.title}" did not finish in EasyWSL${step ? `, at the step "${step}"` : ""}. It said: ${job.error ?? "no reason given"}` +
+    `"${job.title}" did not finish in Pengi${step ? `, at the step "${step}"` : ""}. It said: ${job.error ?? "no reason given"}` +
       (log ? `\n\nThe end of its log:\n\n${fence}\n${log}\n${fence}` : "") +
       "\n\nWhat went wrong, and how do I fix it?",
   );

@@ -41,10 +41,10 @@ If it happens often:
 
 ## A desktop does not open
 
-- Try once more: the first start of a desktop can take longer than EasyWSL waits.
+- Try once more: the first start of a desktop can take longer than Pengi waits.
 - The message on the system's card says what went wrong when it is known.
 - **Stop** the system, then open the desktop again.
-- Details are in `%LOCALAPPDATA%\EasyWSL\logs\desktop-<system>.log`; paste that into File
+- Details are in `%LOCALAPPDATA%\Pengi\logs\desktop-<system>.log`; paste that into File
   Explorer's address bar. Please include it when reporting a problem.
 - A desktop that was working and now shows black: close the window, Restart WSL, open again.
 
@@ -127,7 +127,7 @@ WSL may hold memory it no longer needs. **Stop** systems you're not using, turn 
 ## Docker doesn't start
 
 See the Docker page's messages, and [Docker](docker.md). Restart WSL if the engine won't start
-after the PC slept. Docker Desktop and EasyWSL's engine can both be installed, but run one at a
+after the PC slept. Docker Desktop and Pengi's engine can both be installed, but run one at a
 time.
 
 ## Ask Pip doesn't answer
@@ -138,8 +138,8 @@ loads. On PCs with little graphics memory, choose the *Small* size in Settings. 
 
 ## Reporting a problem
 
-Every install and change has a log; **Show the log file** on its card opens it. EasyWSL's logs are in
-`%LOCALAPPDATA%\EasyWSL\logs`. Include:
+Every install and change has a log; **Show the log file** on its card opens it. Pengi's logs are in
+`%LOCALAPPDATA%\Pengi\logs`
 
 - what you did, what you expected, what happened;
 - the log, and the message on screen;

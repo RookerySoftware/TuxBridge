@@ -55,7 +55,7 @@ Tips:
 
 - Use full paths: cron runs with a very short `PATH`.
 - Save the output, or it is lost: `command >> ~/cron.log 2>&1`.
-- cron needs to be running. With systemd (EasyWSL turns it on), it usually is:
+- cron needs to be running. With systemd (Pengi turns it on), it usually is:
   `systemctl status cron` (Ubuntu, Mint, Debian) or `systemctl status cronie` (Arch; install
   `cronie` and run `sudo systemctl enable --now cronie`).
 

@@ -1,6 +1,6 @@
 # Learn
 
-The **Learn** page teaches Linux, the terminal and the basics of security, inside EasyWSL, so a
+The **Learn** page teaches Linux, the terminal and the basics of security, inside Pengi, so a
 beginner never has to leave the app to find out how something works. It has two kinds of content
 and a Kids mode.
 

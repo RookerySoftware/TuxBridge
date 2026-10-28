@@ -1005,29 +1005,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
-name = "easywsl"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "dirs",
- "futures-util",
- "hex",
- "rcgen",
- "reqwest",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "thiserror 2.0.21",
- "tokio",
- "windows",
- "winreg",
-]
-
-[[package]]
 name = "embed-resource"
 version = "3.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2755,6 +2732,29 @@ checksum = "d354a98a3d1251555de99e8fdd8afda05573c31b82f59063a7b0a29b5527f120"
 dependencies = [
  "base64 0.23.1",
  "serde_core",
+]
+
+[[package]]
+name = "pengi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "futures-util",
+ "hex",
+ "rcgen",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "thiserror 2.0.21",
+ "tokio",
+ "windows",
+ "winreg",
 ]
 
 [[package]]

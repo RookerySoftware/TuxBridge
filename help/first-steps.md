@@ -25,7 +25,7 @@ does not.
 ## 2. Update the system
 
 New systems are often a few weeks behind. The easy way: **Update** in the system's **⋯** menu
-in EasyWSL, which updates everything without questions. Omarchy has its own update tool, which
+in Pengi, which updates everything without questions. Omarchy has its own update tool, which
 opens in a terminal instead.
 
 In a terminal, updating is one command; it asks for the password you chose when installing

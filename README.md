@@ -1,8 +1,8 @@
-# EasyWSL
+# Pengi
 
 Linux on Windows, made easy: a Windows app that installs and runs Linux systems (through WSL)
 for people who have never used Linux or a command line. Each system can get a full Linux
-desktop, Hyprland, with one checkbox. *EasyWSL is a working title.*
+desktop, Hyprland, with one checkbox. Pengi (said *Pen-jee*) was called EasyWSL until 2026-10-28; its mascot is Pip the penguin.
 
 Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
 
@@ -13,12 +13,12 @@ Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
 - **Get Linux**: Ubuntu, Arch Linux, Omarchy, Linux Mint, CachyOS, Debian, Kali, Parrot Security, described
   in plain words; install with a name, an account and a "Use the Hyprland desktop" checkbox
 - **My systems**: open a system's terminal, its files, or its Hyprland desktop; stop it, make
-  it the default, add Hyprland later, remove it; recognises systems installed without EasyWSL
+  it the default, add Hyprland later, remove it; recognises systems installed without Pengi
 - **Docker**: one button sets up the free Docker Engine in a hidden system of its own; manage
   containers, install ready-made apps (media server, cloud storage, AI chat, databases...),
   and use `docker` from PowerShell and from the Linux systems. See [docs/docker.md](docs/docker.md)
-- **Ask Pip** (optional): Pip, with an AI on the PC, answers questions about EasyWSL, Linux, WSL,
-  Windows and Docker from the guides and the PC's state; or an EasyWSL skill for Claude Code,
+- **Ask Pip** (optional): Pip, with an AI on the PC, answers questions about Pengi, Linux, WSL,
+  Windows and Docker from the guides and the PC's state; or an Pengi skill for Claude Code,
   Codex and claude.ai instead. See [docs/assistant.md](docs/assistant.md)
 - **Learn**: guided lessons (the terminal, software, the file bridge, tours of Ubuntu, Kali and
   Parrot) and HackTheBox-style quests that build harmless practice files in a chosen system and
@@ -56,7 +56,7 @@ Tests against the real PC (WSL, the registry, Docker Hub): `cargo test -- --igno
 
 ## The display
 
-`display/` holds EasyWSL's own display, used for every desktop (GNOME, Xfce, Cinnamon, Hyprland):
+`display/` holds Pengi's own display, used for every desktop (GNOME, Xfce, Cinnamon, Hyprland):
 a Rust agent inside Linux and a Rust viewer window on Windows, talking over wsl.exe (no network,
 no VNC). See [docs/desktops.md](docs/desktops.md).
 Build both before running the app:
@@ -82,10 +82,10 @@ in `src-tauri/engine/VERSION`. Commit the result.
 | `src-tauri/src/system.rs` | Is the PC ready, and fixing it |
 | `src-tauri/src/catalog.rs` | The systems on offer, described for newcomers |
 | `src-tauri/src/install.rs` | Installing one, step by step |
-| `src-tauri/src/desktop.rs` | Desktop sessions in EasyWSL's viewer |
+| `src-tauri/src/desktop.rs` | Desktop sessions in Pengi's viewer |
 | `src-tauri/src/docker.rs` | Downloading Docker Hub images (for systems without a WSL image) |
 | `src-tauri/src/containers.rs` | Docker: the engine, the docker command, containers, installing apps |
 | `src-tauri/src/apps.rs` | The app gallery |
-| `src-tauri/linux/` | EasyWSL's scripts inside Linux: desktops, the Docker engine and client |
+| `src-tauri/linux/` | Pengi's scripts inside Linux: desktops, the Docker engine and client |
 | `src-tauri/src/jobs.rs` | Long tasks with steps and a log |
 | `src/` | The window (React, Tailwind) |

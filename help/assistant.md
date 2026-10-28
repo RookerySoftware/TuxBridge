@@ -1,14 +1,14 @@
 ---
 title: Ask Pip, and AI apps
-summary: EasyWSL's own AI on your PC, and adding EasyWSL to Claude or Codex instead.
+summary: Pengi's own AI on your PC, and adding Pengi to Claude or Codex instead.
 section: Start here
 order: 4
 ---
 
 # Ask Pip, and AI apps
 
-EasyWSL can answer questions in your own words about EasyWSL, Linux, WSL, Windows and Docker.
-There are two ways: **Ask Pip**, EasyWSL's own assistant (Pip, with an AI that runs on your PC), or an AI app you already use.
+Pengi can answer questions in your own words about Pengi, Linux, WSL, Windows and Docker.
+There are two ways: **Ask Pip**, Pengi's own assistant (Pip, with an AI that runs on your PC), or an AI app you already use.
 
 ## Ask Pip
 
@@ -30,14 +30,14 @@ things.
 ## Claude or Codex instead
 
 If you pay for Claude or ChatGPT, you can skip the local assistant. **Settings → AI apps you
-already use** adds an EasyWSL *skill* to:
+already use** adds an Pengi *skill* to:
 
 - **Claude Code**, in `%USERPROFILE%\.claude\skills\easywsl`
 - **Codex**, in `%USERPROFILE%\.agents\skills\easywsl`
 - **Claude on the web or Claude Desktop:** **Save .zip**, then upload it in Claude under
   Settings → Capabilities → Skills.
 
-A skill is a few text files that teach the AI how EasyWSL works, with these guides. Ask about
-EasyWSL and it uses the skill by itself, or call it: `/easywsl` in Claude Code, `$easywsl` in
+A skill is a few text files that teach the AI how Pengi works, with these guides. Ask about
+Pengi and it uses the skill by itself, or call it: `/pengi` in Claude Code, `$pengi` in
 Codex. Claude Code and Codex can also look at your systems, logs and Docker with commands, but
-only as you allow them. EasyWSL keeps the skill up to date when it updates.
+only as you allow them. Pengi keeps the skill up to date when it updates.

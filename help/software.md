@@ -22,7 +22,7 @@ it as an app store for the terminal.
 | Remove it | `sudo apt remove firefox` | `sudo pacman -Rs firefox` |
 | See what is installed | `apt list --installed` | `pacman -Q` |
 
-**Update** in the system's **⋯** menu in EasyWSL does "update everything" for you.
+**Update** in the system's **⋯** menu in Pengi does "update everything" for you.
 
 `apt update` refreshes the list of what is available; `apt upgrade` installs the new versions.
 On Arch, always update everything (`-Syu`) before installing: installing one new program on an
@@ -32,7 +32,7 @@ old system can break it.
 
 Programs with a window (Firefox, GIMP, VS Code's Linux version...) open as their own windows on
 your Windows desktop, through WSL's built-in support, even without a Linux desktop. Inside a
-Linux desktop opened from EasyWSL, they open on that desktop instead.
+Linux desktop opened from Pengi, they open on that desktop instead.
 
 ## Flatpak
 

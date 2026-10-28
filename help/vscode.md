@@ -56,7 +56,7 @@ browser.
 ## Dev Containers
 
 The **Dev Containers** extension develops inside a Docker container, defined by a
-`.devcontainer` folder in the project. With EasyWSL's Docker turned on, it can use EasyWSL's
+`.devcontainer` folder in the project. With Pengi's Docker turned on, it can use Pengi's
 engine: the `docker` command in your Linux system already talks to it. Open the project in WSL
 first, then run **Dev Containers: Reopen in Container**.
 

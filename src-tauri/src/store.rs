@@ -1,6 +1,6 @@
-//! What EasyWSL remembers between runs: the distros it set up, and the settings. WSL itself
+//! What Pengi remembers between runs: the distros it set up, and the settings. WSL itself
 //! knows nothing about catalogue entries, accounts or Hyprland, and asking a stopped distro
-//! would start it, so this is recorded when EasyWSL makes a change.
+//! would start it, so this is recorded when Pengi makes a change.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -21,19 +21,19 @@ pub struct DistroInfo {
     pub hyprland: bool,
     /// The Hyprland main key, "SUPER" (the Windows key) or "ALT".
     pub main_key: Option<String>,
-    /// Installed by EasyWSL (removing one that was not gets an extra warning).
+    /// Installed by Pengi (removing one that was not gets an extra warning).
     pub created_by_easywsl: bool,
     /// A setup that has to run in a terminal before the first desktop (Omarchy's).
     pub first_start_pending: bool,
     pub installed_at: Option<u64>,
-    /// A system EasyWSL did not make was asked once what it is (see lib.rs, probe).
+    /// A system Pengi did not make was asked once what it is (see lib.rs, probe).
     pub probed: bool,
-    /// Its `docker` uses EasyWSL's Docker engine (linux/docker-client.sh).
+    /// Its `docker` uses Pengi's Docker engine (linux/docker-client.sh).
     pub docker: bool,
 }
 
 impl DistroInfo {
-    /// Whether EasyWSL knows anything about this system yet.
+    /// Whether Pengi knows anything about this system yet.
     pub fn known(&self) -> bool {
         self.created_by_easywsl || self.probed
     }

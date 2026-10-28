@@ -23,7 +23,7 @@ function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void
         </p>
         {foreign && (
           <Notice tone="warn" icon={<AlertTriangle className="size-4 text-warn" />}>
-            EasyWSL did not install this system, so it may hold work of yours. Copy anything you need first (<i>Open files</i>).
+            Pengi did not install this system, so it may hold work of yours. Copy anything you need first (<i>Open files</i>).
           </Notice>
         )}
         <Field label={`Type ${distro.name} to confirm`}>
@@ -299,7 +299,7 @@ function NotResponding({ onRestarted }: { onRestarted: () => void }) {
       <Notice tone="warn" icon={<AlertTriangle className="size-4 text-warn" />}>
         <p className="font-medium">WSL is not responding</p>
         <p className="text-muted">
-          Windows' Linux support stopped answering, so EasyWSL cannot see or start your systems right now. Restarting WSL usually
+          Windows' Linux support stopped answering, so Pengi cannot see or start your systems right now. Restarting WSL usually
           fixes it.
         </p>
         <div className="pt-1">
@@ -392,7 +392,7 @@ export default function MySystems({
           </div>
           <h2 className="font-display text-xl font-semibold">No Linux yet</h2>
           <p className="mt-1 max-w-md text-muted">
-            Pick a Linux system and EasyWSL installs it for you. It runs next to Windows, in its own window. Nothing on Windows changes.
+            Pick a Linux system and Pengi installs it for you. It runs next to Windows, in its own window. Nothing on Windows changes.
           </p>
           <Button variant="primary" className="mt-6" onClick={onGetLinux}>
             Choose your first Linux

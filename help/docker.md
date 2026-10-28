@@ -18,8 +18,8 @@ from Docker Hub and similar collections.
 ## Turning it on
 
 On the **Docker** page, **Turn on Docker** sets up the free Docker Engine in a small hidden
-Linux system of its own (2 to 4 minutes). Docker keeps running after EasyWSL closes, and starts
-again when EasyWSL opens (Settings → Docker).
+Linux system of its own (2 to 4 minutes). Docker keeps running after Pengi closes, and starts
+again when Pengi opens (Settings → Docker).
 
 ## The app gallery
 
@@ -63,4 +63,4 @@ are not translated yet, and neither are folders inside a Linux system's home. Na
 
 If Docker Desktop is installed, its containers show on the Docker page too, marked
 **Docker Desktop**. The `docker` command keeps using Docker Desktop; `docker context use
-easywsl` switches it to EasyWSL's engine, and `docker context use desktop-linux` back.
+easywsl` switches it to Pengi's engine, and `docker context use desktop-linux` back.

@@ -36,7 +36,7 @@ export interface TourStep extends Bubble {
 export const pageTips: Record<Page, { normal: string[]; kids: string[] }> = {
   systems: {
     normal: [
-      "This is **My systems**: every Linux on this PC, including ones installed without EasyWSL. **Terminal** opens a command line, **Files** opens its files in Windows.",
+      "This is **My systems**: every Linux on this PC, including ones installed without Pengi. **Terminal** opens a command line, **Files** opens its files in Windows.",
       "The **⋯** menu on a card has **Update**, **Stop**, **Make default**, adding a desktop, and the guide for that system.",
       "A system that is not in use stops by itself after a short while, and gives its memory back to Windows.",
       "Typing `wsl` in PowerShell opens the **default** system. **Make default** in the ⋯ menu picks which one.",
@@ -83,7 +83,7 @@ export const pageTips: Record<Page, { normal: string[]; kids: string[] }> = {
     normal: [
       "**Ask Pip** is me, with an AI that runs on this PC: your questions never leave it.",
       "I read the guides and see which systems you have, so you can ask me things like *how do I update my Ubuntu?*",
-      "Prefer Claude or Codex? **Settings** can install an EasyWSL skill for them instead.",
+      "Prefer Claude or Codex? **Settings** can install an Pengi skill for them instead.",
     ],
     kids: ["Here you can ask me questions by typing! Ask a grown-up to help you."],
   },
@@ -112,8 +112,8 @@ export const explanations: [string, string][] = [
   ["Get Linux", "Choose a Linux to install. Each one is described in plain words."],
   ["Docker", "Run ready-made apps in containers, and use the docker command."],
   ["Learn", "Guided lessons, hands-on challenges and Kids mode."],
-  ["Ask Pip", "Ask me anything about EasyWSL, Linux, WSL, Windows and Docker. My AI runs on this PC."],
-  ["Help", "Guides for everything in EasyWSL and Linux, with a search."],
+  ["Ask Pip", "Ask me anything about Pengi, Linux, WSL, Windows and Docker. My AI runs on this PC."],
+  ["Help", "Guides for everything in Pengi and Linux, with a search."],
   ["Settings", "Where new systems go, desktop options, Docker, my AI, Kids mode and me."],
   ["Terminal", "Opens a command line in this system: you type a command, press Enter, and it runs."],
   ["Open desktop", "Opens this system's desktop in its own window. Close the window to end the session."],
@@ -130,7 +130,7 @@ export const explanations: [string, string][] = [
   ["Add the", "Adds this system's own desktop, with a menu, taskbar and windows."],
   ["Guide to", "Opens the guide for this system: first steps, software, common problems."],
   ["Remove", "Deletes it and everything in it. Copy out what you want to keep first."],
-  ["Install", "Starts installing. You can keep using EasyWSL while it works."],
+  ["Install", "Starts installing. You can keep using Pengi while it works."],
   ["Show me around", "When the system is ready, I'll walk you through it."],
   ["More options", "Where its disk goes, and whether it becomes the default system."],
   ["Use the Windows key", "Hyprland's shortcuts use a main key. The Windows key is easiest; Alt works too."],
@@ -204,7 +204,7 @@ export const kidsFacts: string[] = [
 export const appTour: TourStep[] = [
   {
     title: "Hi! I'm Pip",
-    text: "I'm EasyWSL's penguin. Want a quick tour? It takes about a minute, and you can skip it any time.",
+    text: "I'm Pengi's penguin. Want a quick tour? It takes about a minute, and you can skip it any time.",
     mood: "happy",
   },
   {

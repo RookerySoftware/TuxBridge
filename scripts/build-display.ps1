@@ -1,4 +1,4 @@
-# Builds EasyWSL's own display: the viewer (Windows) with cargo, the agent (Linux) inside a WSL
+# Builds Pengi's own display: the viewer (Windows) with cargo, the agent (Linux) inside a WSL
 # distro that has Rust, PipeWire's development files and clang. Puts them where the app bundles
 # them: src-tauri\bin\easywsl-viewer.exe and src-tauri\linux\easywsl-agent.
 #

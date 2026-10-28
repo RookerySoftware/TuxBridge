@@ -1,4 +1,4 @@
-// Docker: turning EasyWSL's engine on, its containers (and Docker Desktop's), and the app gallery.
+// Docker: turning Pengi's engine on, its containers (and Docker Desktop's), and the app gallery.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -45,7 +45,7 @@ function TurnOn({ desktopInstalled }: { desktopInstalled: boolean }) {
           <h2 className="font-display text-lg font-semibold">Turn on Docker</h2>
           <p className="text-sm text-muted">
             Docker runs apps in containers: each app comes with everything it needs, so it installs in one step and never mixes with
-            the rest of your PC. EasyWSL sets up the free Docker Engine in a small hidden Linux system of its own.
+            the rest of your PC. Pengi sets up the free Docker Engine in a small hidden Linux system of its own.
           </p>
         </div>
       </div>
@@ -172,7 +172,7 @@ function RemoveDockerDialog({ onClose }: { onClose: () => void }) {
     <Dialog title="Remove Docker?" onClose={onClose}>
       <div className="space-y-4">
         <p className="text-muted">
-          This deletes EasyWSL's Docker engine and <b className="text-ink">everything in it</b>: every container, image and app's data.
+          This deletes Pengi's Docker engine and <b className="text-ink">everything in it</b>: every container, image and app's data.
           It cannot be undone. Docker Desktop, if you have it, is not touched.
         </p>
         <Field label="Type docker to confirm">

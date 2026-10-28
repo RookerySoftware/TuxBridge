@@ -1,4 +1,4 @@
-//! A distro's desktop, shown in EasyWSL's own viewer (display/viewer). The viewer starts the
+//! A distro's desktop, shown in Pengi's own viewer (display/viewer). The viewer starts the
 //! session through wsl.exe and draws it; easywsl-agent, next to the session in Linux, hands it
 //! over on wsl.exe's stdin and stdout. No network and no ports are involved, and the session
 //! ends when the viewer closes.
@@ -63,7 +63,7 @@ async fn first_start(distro: &str) -> anyhow::Result<()> {
     }
 }
 
-/// Whose desktop it is, for a system EasyWSL knows no account of: the one the desktop was set
+/// Whose desktop it is, for a system Pengi knows no account of: the one the desktop was set
 /// up for, or else the first regular account.
 async fn desktop_user(distro: &str) -> Option<String> {
     let script = r#"cat /etc/easywsl/desktop-user 2> /dev/null ||
@@ -125,7 +125,7 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
 
     let viewer = app.path().resource_dir().map_err(|e| e.to_string())?.join("bin").join("easywsl-viewer.exe");
     if !viewer.exists() {
-        return Err("The desktop viewer is missing; reinstall EasyWSL.".into());
+        return Err("The desktop viewer is missing; reinstall Pengi.".into());
     }
     let linux = crate::engine::prepare_linux(app).map_err(|e| e.to_string())?;
     let agent = format!("{linux}/easywsl-agent");
@@ -185,7 +185,7 @@ async fn session(app: &AppHandle, distro: &str, kind: Kind) -> Result<(), String
     if full_screen {
         args.push("--fullscreen".into());
     }
-    args.extend(["--size".into(), window_size, "--title".into(), format!("{distro} - EasyWSL"), "--".into()]);
+    args.extend(["--size".into(), window_size, "--title".into(), format!("{distro} - Pengi"), "--".into()]);
     args.push(wsl::exe().to_string_lossy().into_owned());
     args.extend(["-d", distro, "-u", "root", "-e"].map(String::from));
     args.extend(command);

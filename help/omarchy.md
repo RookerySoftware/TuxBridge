@@ -22,7 +22,7 @@ that it opens straight to the desktop.
 
 ## The keys that matter
 
-In EasyWSL's window, the Windows key (written **Win** here; Omarchy calls it *Super*) goes to
+In Pengi's window, the Windows key (written **Win** here; Omarchy calls it *Super*) goes to
 Omarchy. See [Using a desktop window](desktop-window.md).
 
 | Keys | Does |

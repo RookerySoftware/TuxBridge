@@ -134,7 +134,7 @@ struct Asset {
 /// built into Windows 10).
 async fn install_wsl_package() -> anyhow::Result<()> {
     let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
-    let client = reqwest::Client::builder().user_agent("EasyWSL").build()?;
+    let client = reqwest::Client::builder().user_agent("Pengi").build()?;
     let release: Release = client
         .get("https://api.github.com/repos/microsoft/WSL/releases/latest")
         .send()

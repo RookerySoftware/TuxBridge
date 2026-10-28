@@ -1,8 +1,8 @@
-//! An EasyWSL skill for the AI apps people already pay for: Claude Code, Codex, and Claude on
+//! An Pengi skill for the AI apps people already pay for: Claude Code, Codex, and Claude on
 //! claude.ai or Claude Desktop (as a .zip to upload). A skill is a folder with SKILL.md, which
 //! the AI reads when a question is about its subject, and reference files it reads as needed.
 //!
-//! The skill is made from the app's own files: skill/SKILL.md (how EasyWSL is built and what to
+//! The skill is made from the app's own files: skill/SKILL.md (how Pengi is built and what to
 //! check), the guides (help/*.md) and the app's description that the local assistant gets too
 //! (src/assistant/knowledge.md). Installed copies are rewritten when the app starts, so they
 //! follow the app's updates.
@@ -12,8 +12,10 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-/// In SKILL.md of every skill EasyWSL wrote; a folder without it is someone else's.
-const MARK: &str = "<!-- Made by EasyWSL";
+/// In SKILL.md of every skill Pengi wrote; a folder without it is someone else's.
+const MARK: &str = "<!-- Made by Pengi";
+/// The same, from when Pengi was called EasyWSL.
+const OLD_MARK: &str = "<!-- Made by EasyWSL";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,9 +38,14 @@ impl Target {
     fn dir(self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
         Some(match self {
-            Target::Claude => home.join(".claude").join("skills").join("easywsl"),
-            Target::Codex => home.join(".agents").join("skills").join("easywsl"),
+            Target::Claude => home.join(".claude").join("skills").join("pengi"),
+            Target::Codex => home.join(".agents").join("skills").join("pengi"),
         })
+    }
+
+    /// Where the skill went while Pengi was called EasyWSL.
+    fn old_dir(self) -> Option<PathBuf> {
+        self.dir().map(|d| d.with_file_name("easywsl"))
     }
 
     /// Whether the app is on this PC: its settings folder, or its command on the PATH.
@@ -57,7 +64,7 @@ fn on_path(command: &str) -> bool {
 }
 
 fn ours(dir: &Path) -> bool {
-    std::fs::read_to_string(dir.join("SKILL.md")).is_ok_and(|t| t.contains(MARK))
+    std::fs::read_to_string(dir.join("SKILL.md")).is_ok_and(|t| t.contains(MARK) || t.contains(OLD_MARK))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -128,16 +135,16 @@ fn build_from(sources: &Sources, out: &Path) -> anyhow::Result<()> {
 
     // The description of the app, without the local assistant's own instructions.
     let app_md = knowledge.split("\n# How to answer").next().unwrap_or(&knowledge).trim().to_string();
-    std::fs::write(out.join("references").join("app.md"), format!("# EasyWSL: the app\n\n{app_md}\n"))?;
+    std::fs::write(out.join("references").join("app.md"), format!("# Pengi: the app\n\n{app_md}\n"))?;
     let skill = template.replace("{{VERSION}}", env!("CARGO_PKG_VERSION")).replace("{{GUIDES}}", &index.join("\n"));
     std::fs::write(out.join("SKILL.md"), skill)?;
     Ok(())
 }
 
-/// Puts the skill into its folder, replacing an older one EasyWSL wrote.
+/// Puts the skill into its folder, replacing an older one Pengi wrote.
 fn write(app: &AppHandle, dir: &Path) -> Result<(), String> {
     if dir.exists() && !ours(dir) {
-        return Err(format!("{} already has a skill named easywsl that EasyWSL did not make; it was left as it is.", dir.display()));
+        return Err(format!("{} already has a skill named pengi that Pengi did not make; it was left as it is.", dir.display()));
     }
     let fresh = dir.with_extension("new");
     let _ = std::fs::remove_dir_all(&fresh);
@@ -170,6 +177,12 @@ pub fn remove(target: Target) -> Result<(), String> {
 /// Rewrites the installed skills from this version of the app (run when it starts).
 pub fn refresh(app: &AppHandle) {
     for t in Target::ALL {
+        // A skill installed as easywsl moves to its new name.
+        if let (Some(old), Some(new)) = (t.old_dir().filter(|d| ours(d)), t.dir()) {
+            if !new.exists() && write(app, &new).is_ok() {
+                let _ = std::fs::remove_dir_all(&old);
+            }
+        }
         if let Some(dir) = t.dir().filter(|d| ours(d)) {
             let _ = write(app, &dir);
         }
@@ -179,11 +192,11 @@ pub fn refresh(app: &AppHandle) {
 /// The skill as a .zip in Downloads, for claude.ai or Claude Desktop (Settings, Capabilities,
 /// Skills, Upload). Returns its path.
 pub fn export_zip(app: &AppHandle) -> Result<String, String> {
-    let staging = std::env::temp_dir().join(format!("easywsl-skill-{}", std::process::id()));
+    let staging = std::env::temp_dir().join(format!("pengi-skill-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&staging);
-    build(app, &staging.join("easywsl")).map_err(|e| format!("The skill could not be made: {e}"))?;
+    build(app, &staging.join("pengi")).map_err(|e| format!("The skill could not be made: {e}"))?;
     let downloads = dirs::download_dir().unwrap_or_else(std::env::temp_dir);
-    let zip = downloads.join("easywsl-skill.zip");
+    let zip = downloads.join("pengi-skill.zip");
     let _ = std::fs::remove_file(&zip);
     use std::os::windows::process::CommandExt;
     let out = std::process::Command::new(crate::containers::windows_tar())
@@ -192,7 +205,7 @@ pub fn export_zip(app: &AppHandle) -> Result<String, String> {
         .arg(&zip)
         .arg("-C")
         .arg(&staging)
-        .arg("easywsl")
+        .arg("pengi")
         .creation_flags(crate::wsl::CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string());
@@ -217,11 +230,11 @@ mod tests {
             guides: repo.join("..").join("help"),
             knowledge: repo.join("..").join("src").join("assistant").join("knowledge.md"),
         };
-        let out = std::env::temp_dir().join("easywsl-skill-test").join("easywsl");
+        let out = std::env::temp_dir().join("pengi-skill-test").join("pengi");
         let _ = std::fs::remove_dir_all(&out);
         build_from(&sources, &out).unwrap();
         let skill = std::fs::read_to_string(out.join("SKILL.md")).unwrap();
-        assert!(skill.starts_with("---\nname: easywsl\ndescription: "));
+        assert!(skill.starts_with("---\nname: pengi\ndescription: "));
         assert!(skill.contains(MARK) && !skill.contains("{{"));
         assert!(skill.contains("- `references/guides/welcome.md`: "));
         let app = std::fs::read_to_string(out.join("references").join("app.md")).unwrap();

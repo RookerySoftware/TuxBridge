@@ -1,5 +1,5 @@
 #!/bin/sh
-# Makes `docker` (and `docker compose`) in a distro use EasyWSL's Docker engine, as Docker
+# Makes `docker` (and `docker compose`) in a distro use Pengi's Docker engine, as Docker
 # Desktop's WSL integration does for its own. Run as root inside the distro:
 #
 #   docker-client.sh install FILES USER    FILES: a folder with docker, docker-compose (static
@@ -33,14 +33,14 @@ install)
     chown "$U" "$CERTS/key.pem"
     cat > "$WRAPPER" <<EOF
 #!/bin/sh
-$MARK: talks to EasyWSL's Docker engine (the Docker page in EasyWSL on Windows).
+$MARK: talks to Pengi's Docker engine (the Docker page in Pengi on Windows).
 # Remove with: sudo /usr/local/lib/easywsl/docker-client.sh remove
 [ -n "\${DOCKER_HOST:-}" ] || export DOCKER_HOST=tcp://127.0.0.1:2376 DOCKER_TLS_VERIFY=1 DOCKER_CERT_PATH=$CERTS
 exec $LIB/docker "\$@"
 EOF
     chmod 755 "$WRAPPER"
     install -m 755 "$0" "$LIB/docker-client.sh"
-    echo "docker in this system now uses EasyWSL's Docker engine."
+    echo "docker in this system now uses Pengi's Docker engine."
     ;;
 remove)
     grep -q "$MARK" "$WRAPPER" 2> /dev/null && rm -f "$WRAPPER"

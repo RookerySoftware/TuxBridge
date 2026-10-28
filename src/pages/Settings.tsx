@@ -130,8 +130,8 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
         <Toggle
           checked={settings.startDocker}
           onChange={(v) => save({ ...settings, startDocker: v })}
-          label="Start Docker when EasyWSL opens"
-          description="Docker keeps running after EasyWSL closes, until Windows restarts or you stop it on the Docker page."
+          label="Start Docker when Pengi opens"
+          description="Docker keeps running after Pengi closes, until Windows restarts or you stop it on the Docker page."
         />
       </Card>
 
@@ -142,7 +142,7 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
 
       <Card className="space-y-1 p-5 text-sm text-muted">
         <h2 className="mb-2 font-display font-semibold text-ink">About</h2>
-        <p>EasyWSL 0.1.0 (pre-release)</p>
+        <p>Pengi 0.1.0 (pre-release)</p>
         <p>WSL {readiness.state === "ready" ? readiness.wslVersion : "not ready"}</p>
         <p>The Hyprland desktop comes from hyprland-wsl.</p>
       </Card>

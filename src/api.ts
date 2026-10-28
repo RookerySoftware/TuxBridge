@@ -55,7 +55,7 @@ export interface DistroInfo {
   firstStartPending: boolean;
   installedAt: number | null;
   probed: boolean;
-  /** Its docker uses EasyWSL's engine. */
+  /** Its docker uses Pengi's engine. */
   docker: boolean;
 }
 
@@ -109,7 +109,7 @@ export interface Settings {
 }
 
 export interface DockerStatus {
-  /** EasyWSL's engine is set up. */
+  /** Pengi's engine is set up. */
   installed: boolean;
   running: boolean;
   version: string | null;
@@ -211,7 +211,7 @@ export interface AiChunk {
   error: string | null;
 }
 
-/** An AI app the EasyWSL skill can be added to. */
+/** An AI app the Pengi skill can be added to. */
 export interface SkillTarget {
   id: "claude" | "codex";
   name: string;
@@ -360,7 +360,7 @@ const mockCatalog: CatalogEntry[] = [
 
 const mockState = {
   distros: [
-    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\arch", info: { catalogId: "arch", user: "me", desktop: null, hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false, docker: false }, catalog: mockCatalog[1], busy: false },
+    { name: "arch", running: true, isDefault: true, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\Pengi\\Distros\\arch", info: { catalogId: "arch", user: "me", desktop: null, hyprland: true, mainKey: "SUPER", createdByEasywsl: true, firstStartPending: false, installedAt: 0, probed: false, docker: false }, catalog: mockCatalog[1], busy: false },
     { name: "Ubuntu", running: false, isDefault: false, wslVersion: 2, basePath: "C:\\Users\\me\\AppData\\Local\\wsl\\ubuntu", info: { catalogId: null, user: null, desktop: null, hyprland: false, mainKey: null, createdByEasywsl: false, firstStartPending: false, installedAt: null, probed: true, docker: false }, catalog: null, busy: false },
   ] as Distro[],
   jobs: [] as Job[],
@@ -434,8 +434,8 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
     case "get_catalog": return mockCatalog;
     case "suggest_name": return mockState.distros.some((d) => d.name === a.catalogId) ? `${a.catalogId}2` : a.catalogId;
     case "suggest_user": return "me";
-    case "default_location": return `C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\${a.name}`;
-    case "check_install": return `C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros\\${a.request.name}`;
+    case "default_location": return `C:\\Users\\me\\AppData\\Local\\Pengi\\Distros\\${a.name}`;
+    case "check_install": return `C:\\Users\\me\\AppData\\Local\\Pengi\\Distros\\${a.request.name}`;
     case "start_install": return mockJob(a.request);
     case "list_jobs": return mockState.jobs;
     case "dismiss_job": mockState.jobs = mockState.jobs.filter((j) => j.id !== a.id); return null;
@@ -449,7 +449,7 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
     case "list_sessions": return [];
     case "get_settings": return mockState.settings;
     case "set_settings": mockState.settings = a.settings; return null;
-    case "default_install_dir": return "C:\\Users\\me\\AppData\\Local\\EasyWSL\\Distros";
+    case "default_install_dir": return "C:\\Users\\me\\AppData\\Local\\Pengi\\Distros";
     case "docker_status": return mockState.docker;
     case "docker_enable": mockState.docker = { ...mockState.docker, installed: true }; emit("docker-changed", null); return 0;
     case "docker_start": mockState.docker = { ...mockState.docker, running: true }; return null;
@@ -479,10 +479,10 @@ async function mock(command: string, args?: Record<string, unknown>): Promise<un
       return null;
     }
     case "skills_status": return [
-      { id: "claude", name: "Claude Code", detected: true, installed: false, path: "C:\\Users\\me\\.claude\\skills\\easywsl" },
-      { id: "codex", name: "Codex", detected: false, installed: false, path: "C:\\Users\\me\\.agents\\skills\\easywsl" },
+      { id: "claude", name: "Claude Code", detected: true, installed: false, path: "C:\\Users\\me\\.claude\\skills\\pengi" },
+      { id: "codex", name: "Codex", detected: false, installed: false, path: "C:\\Users\\me\\.agents\\skills\\pengi" },
     ];
-    case "skill_export": return "C:\\Users\\me\\Downloads\\easywsl-skill.zip";
+    case "skill_export": return "C:\\Users\\me\\Downloads\\pengi-skill.zip";
     case "docker_update": return 0;
     case "update_system": return 0;
     case "docker_logs": return "Starting...\nReady.";

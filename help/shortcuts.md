@@ -1,6 +1,6 @@
 ---
 title: Keyboard shortcuts
-summary: The terminal, nano, less and man, Windows Terminal, EasyWSL's desktop window, and each desktop.
+summary: The terminal, nano, less and man, Windows Terminal, Pengi's desktop window, and each desktop.
 section: Reference
 order: 81
 ---
@@ -75,7 +75,7 @@ More in [Editing text files](editors.md).
 All after **Ctrl+B**: `c` new window, `n`/`p` next/previous, `%` split side by side, `"` split
 top/bottom, arrows move between panes, `d` detach (`tmux attach` to return).
 
-## EasyWSL's desktop window
+## Pengi's desktop window
 
 | Keys | Does |
 | --- | --- |
@@ -121,7 +121,7 @@ Other keys, including the Windows key, go to Linux while the window is active. S
 | Ctrl+Alt+Left / Right | Switch workspace |
 | Ctrl+Alt+D | Show desktop |
 
-## Hyprland (EasyWSL's setup)
+## Hyprland (Pengi's setup)
 
 | Keys | Does |
 | --- | --- |

@@ -58,13 +58,13 @@ Paste a few words of any message into the search above to find it. The most comm
 | `SSL certificate problem` | The clock is off (`sudo hwclock -s`) or a corporate proxy intercepts HTTPS. |
 | `Permission denied (publickey)` | SSH key not added or not used; see [Git and SSH keys](git-ssh.md). |
 
-## WSL itself (in PowerShell, or from EasyWSL)
+## WSL itself (in PowerShell, or from Pengi)
 
 | Message | Do |
 | --- | --- |
 | `HCS_E_CONNECTION_TIMEOUT`, or nothing happens | WSL is stuck: **Restart WSL**, or `wsl --shutdown`, or restart Windows. |
-| `0x80370102` / *virtualization is not enabled* | Turn on virtualization (Intel VT-x / AMD SVM) in the PC's firmware settings. EasyWSL's check explains. |
-| `0x8007019e` / *WSL is not installed* | Let EasyWSL's setup turn WSL on, or `wsl --install` and restart. |
+| `0x80370102` / *virtualization is not enabled* | Turn on virtualization (Intel VT-x / AMD SVM) in the PC's firmware settings. Pengi's check explains. |
+| `0x8007019e` / *WSL is not installed* | Let Pengi's setup turn WSL on, or `wsl --install` and restart. |
 | `0x80070422` | A Windows service WSL needs is disabled; restart, and make sure *Virtual Machine Platform* is on. |
 | `There is no distribution with the supplied name` | Check the name with `wsl -l -v`. |
 | `The attempted operation is not supported for the type of object referenced` | Often a network tool (VPN, proxy) hooking Windows' network; update or remove it. |

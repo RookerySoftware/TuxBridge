@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "EasyWSL",
+  "productName": "Pengi",
   "version": "0.1.0",
-  "identifier": "com.itsoverk1ll.easywsl",
+  "identifier": "com.itsoverk1ll.pengi",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "EasyWSL",
+        "title": "Pengi",
         "width": 1180,
         "height": 760,
         "minWidth": 900,
@@ -47,7 +47,8 @@
     },
     "shortDescription": "Linux on Windows, made easy",
     "windows": {
-      "webviewInstallMode": { "type": "embedBootstrapper" }
+      "webviewInstallMode": { "type": "embedBootstrapper" },
+      "nsis": { "installerHooks": "./installer-hooks.nsh" }
     },
     "publisher": "ItsOverk1ll"
   }

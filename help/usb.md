@@ -76,4 +76,4 @@ sudo usermod -aG dialout $USER     # Arch: uucp
 - Webcams work with some drivers, but often need a WSL kernel with extra modules; using them
   from Windows apps is easier.
 - Each WSL restart detaches devices; attach them again.
-- `usbipd` is not part of EasyWSL; its documentation is at github.com/dorssel/usbipd-win.
+- `usbipd` is not part of Pengi; its documentation is at github.com/dorssel/usbipd-win.

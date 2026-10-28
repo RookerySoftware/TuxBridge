@@ -138,7 +138,7 @@ pub fn registered() -> Vec<Registered> {
 }
 
 /// Skips the distro's own first-run account creation (its "OOBE"), for a distro whose account
-/// EasyWSL has made.
+/// Pengi has made.
 pub fn skip_oobe(name: &str) {
     let Ok(lxss) = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(LXSS, KEY_READ) else { return };
     for id in lxss.enum_keys().flatten() {

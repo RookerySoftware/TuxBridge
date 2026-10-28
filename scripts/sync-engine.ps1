@@ -1,5 +1,5 @@
 # Copies hyprland-wsl's Linux side (the "engine") into src-tauri/engine, from a given git ref of
-# a hyprland-wsl checkout. EasyWSL bundles that copy and runs it inside the distros: the account
+# a hyprland-wsl checkout. Pengi bundles that copy and runs it inside the distros: the account
 # setup, the Hyprland installer, the launcher, Omarchy's installer.
 #
 #   .\scripts\sync-engine.ps1                                   # pre-release-0.1.0 of P:\hyprland-wsl-experiment
@@ -17,7 +17,7 @@ $engine = Join-Path $PSScriptRoot '..\src-tauri\engine'
 $commit = (git -C $Repo rev-parse --verify "$Ref^{commit}").Trim()
 if ($LASTEXITCODE) { throw "No ref '$Ref' in $Repo" }
 
-# Only what runs inside Linux. The Windows scripts of hyprland-wsl are replaced by EasyWSL itself.
+# Only what runs inside Linux. The Windows scripts of hyprland-wsl are replaced by Pengi itself.
 $paths = @('install.sh', 'hyprland-wsl', 'patches', 'src', 'LICENSE',
            'tools/new-distro-setup.sh', 'tools/merge-layers.sh', 'tools/distro-info.sh',
            'tools/build-aquamarine.sh', 'tools/omarchy-wsl.sh', 'tools/omarchy-wsl-first-start.sh',

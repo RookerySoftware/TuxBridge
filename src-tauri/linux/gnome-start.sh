@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs a headless GNOME session for a user and hands it to EasyWSL's viewer through
+# Runs a headless GNOME session for a user and hands it to Pengi's viewer through
 # easywsl-agent, whose stdin and stdout are this script's (wsl.exe connects them to the viewer).
 # Run as root inside the distro:
 #

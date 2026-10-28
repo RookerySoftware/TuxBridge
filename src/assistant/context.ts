@@ -1,4 +1,4 @@
-// What the assistant is told with every question: how EasyWSL works (knowledge.md), what is on
+// What the assistant is told with every question: how Pengi works (knowledge.md), what is on
 // this PC right now, and the sections of the guides that match the question. A small model
 // answers well about what it is shown, so finding the right sections matters more than its size.
 
@@ -16,14 +16,14 @@ export function search(question: string, limit: number) {
 }
 
 function describeSystem(d: Distro): string {
-  const parts = [d.catalog?.title ?? "a Linux system EasyWSL did not install"];
+  const parts = [d.catalog?.title ?? "a Linux system Pengi did not install"];
   if (d.info.user) parts.push(`user ${d.info.user}`);
   const desktops = [d.info.desktop && `${d.catalog?.desktop?.name ?? d.info.desktop} desktop`, d.info.hyprland && "Hyprland desktop"].filter(Boolean);
   parts.push(desktops.length ? desktops.join(" and ") : "no desktop");
   parts.push(d.running ? "running" : "stopped");
   if (d.isDefault) parts.push("the default");
   if (d.wslVersion === 1) parts.push("WSL 1 (old; most things need WSL 2)");
-  if (d.info.docker) parts.push("its docker uses EasyWSL's engine");
+  if (d.info.docker) parts.push("its docker uses Pengi's engine");
   return `- ${d.name}: ${parts.join(", ")}`;
 }
 
@@ -38,8 +38,8 @@ async function thisPc(): Promise<string> {
     lines.push(...listing.distros.map(describeSystem));
   }
   if (docker) {
-    if (!docker.installed) lines.push(`Docker: not turned on in EasyWSL${docker.desktopInstalled ? " (Docker Desktop is installed)" : ""}.`);
-    else lines.push(`Docker: EasyWSL's engine ${docker.version ?? ""} is ${docker.running ? "running" : "stopped"}.`);
+    if (!docker.installed) lines.push(`Docker: not turned on in Pengi${docker.desktopInstalled ? " (Docker Desktop is installed)" : ""}.`);
+    else lines.push(`Docker: Pengi's engine ${docker.version ?? ""} is ${docker.running ? "running" : "stopped"}.`);
     if (docker.installed && docker.running) {
       const containers = await quick(api.containers());
       if (containers?.length) {
@@ -70,7 +70,7 @@ export async function instructions(history: AiMessage[]): Promise<string> {
     parts.push(`From the guide "${s.title}" (${s.guide}.md):\n${text}`);
   }
   return [
-    "You are Pip, EasyWSL's penguin mascot and assistant: friendly, warm and clear, never silly at the expense of being useful. Speak as Pip (\"I\"), keep answers practical, and only now and then add a light penguin touch. You help with EasyWSL, Linux, WSL, Windows and Docker, and politely decline other subjects.",
+    "You are Pip, Pengi's penguin mascot and assistant: friendly, warm and clear, never silly at the expense of being useful. Speak as Pip (\"I\"), keep answers practical, and only now and then add a light penguin touch. You help with Pengi, Linux, WSL, Windows and Docker, and politely decline other subjects.",
     knowledge.trim(),
     `# This PC right now\n\n${await thisPc()}`,
     parts.length ? `# Guides that match the question\n\n${parts.join("\n\n---\n\n")}` : "# Guides\n\nNo guide matches this question closely; answer from what you know, and say when you are unsure.",
