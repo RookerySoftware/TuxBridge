@@ -130,11 +130,11 @@ See the Docker page's messages, and [Docker](docker.md). Restart WSL if the engi
 after the PC slept. Docker Desktop and EasyWSL's engine can both be installed, but run one at a
 time.
 
-## The assistant doesn't answer
+## Ask Pip doesn't answer
 
-The assistant runs on your PC: the first answer after starting takes longer while the model
+Pip's AI runs on your PC: the first answer after starting takes longer while the model
 loads. On PCs with little graphics memory, choose the *Small* size in Settings. See
-[The assistant](assistant.md).
+[Ask Pip, and AI apps](assistant.md).
 
 ## Reporting a problem
 

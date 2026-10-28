@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Boxes, GraduationCap, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon, Sparkles } from "lucide-react";
-import { api, type Readiness } from "./api";
+import { Boxes, GraduationCap, HelpCircle, Loader2, Monitor, PackagePlus, Settings as SettingsIcon } from "lucide-react";
+import { api, on, type Readiness } from "./api";
 import { useDistros, useJobs, useSessions } from "./state";
 import Setup from "./pages/Setup";
 import MySystems from "./pages/MySystems";
@@ -12,6 +12,7 @@ import Help from "./pages/Help";
 import Assistant, { useAiStatus } from "./pages/Assistant";
 import { onOpen } from "./assistant/store";
 import Companion from "./companion/Companion";
+import Penguin from "./companion/Penguin";
 
 type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "settings";
 
@@ -20,7 +21,7 @@ const nav: { page: Page; label: string; icon: React.ReactNode; soon?: boolean }[
   { page: "get", label: "Get Linux", icon: <PackagePlus className="size-4" /> },
   { page: "docker", label: "Docker", icon: <Boxes className="size-4" /> },
   { page: "learn", label: "Learn", icon: <GraduationCap className="size-4" /> },
-  { page: "assistant", label: "Assistant", icon: <Sparkles className="size-4" /> },
+  { page: "assistant", label: "Ask Pip", icon: <Penguin size={16} /> },
   { page: "help", label: "Help", icon: <HelpCircle className="size-4" /> },
 ];
 
@@ -34,9 +35,11 @@ function Main({ readiness }: { readiness: Readiness }) {
   const { distros, responding, refresh } = useDistros();
   const { jobs, dismiss } = useJobs();
   const { sessions, clear } = useSessions();
-  // Known early, so "Ask the assistant" buttons elsewhere know whether it is there.
+  // Known early, so "Ask Pip" buttons elsewhere know whether it is there.
   useAiStatus();
   useEffect(() => onOpen(() => setPage("assistant")), []);
+  // The tray menu's Settings (and the like) open the window on a page.
+  useEffect(() => on<string>("navigate", (p) => setPage(p as Page)), []);
   // Docker's jobs (turning it on, installing apps) show on its own page.
   const dockerJob = (j: { kind: string }) => j.kind === "docker" || j.kind === "app" || j.kind === "container-update";
   const assistantJob = (j: { kind: string }) => j.kind === "assistant";
@@ -49,7 +52,7 @@ function Main({ readiness }: { readiness: Readiness }) {
     <div className="flex h-full">
       <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-surface/60 px-3 py-4">
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-accent font-display font-bold text-accent-ink">E</div>
+          <Penguin size={32} />
           <span className="font-display text-base font-semibold">EasyWSL</span>
         </div>
         <nav className="space-y-0.5">

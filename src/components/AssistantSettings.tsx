@@ -19,7 +19,7 @@ export default function AssistantSettings() {
 
   return (
     <Card className="space-y-4 p-5">
-      <h2 className="font-display font-semibold">Assistant</h2>
+      <h2 className="font-display font-semibold">Ask Pip (the AI)</h2>
       {!status.installed ? (
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted">Not installed. It is an AI on this PC that answers questions about EasyWSL, Linux, WSL, Windows and Docker.</p>
@@ -52,7 +52,7 @@ export default function AssistantSettings() {
           {error && <Notice tone="bad">{error}</Notice>}
           <div className="flex flex-wrap justify-between gap-2">
             <Button variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => setConfirm(true)}>
-              Remove the assistant
+              Remove Pip's AI
             </Button>
             {picked !== current && (
             <Button
@@ -77,7 +77,7 @@ export default function AssistantSettings() {
         </>
       )}
       {confirm && (
-        <Dialog title="Remove the assistant?" onClose={() => setConfirm(false)}>
+        <Dialog title="Remove Pip's AI?" onClose={() => setConfirm(false)}>
           <div className="space-y-4">
             <p className="text-muted">This deletes Ollama and the model from this PC, freeing several GB. Your chat is kept. You can install it again later.</p>
             {error && <Notice tone="bad">{error}</Notice>}

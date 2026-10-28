@@ -45,7 +45,7 @@ A failed task's log ends with the command that failed and its output; read it be
 - **Folder sharing with Docker:** the engine sees Windows drives as `/mnt/c/...`. From
   PowerShell, `-v C:\...` and Compose's relative paths (`./data`) do not work with this engine
   yet; use `-v /mnt/c/Users/<name>/<folder>:/data` or a named volume.
-- **The assistant** (EasyWSL's own local AI) runs Ollama on `127.0.0.1:11435` while the app is
+- **Ask Pip**, the assistant (EasyWSL's own local AI, speaking as Pip the mascot), runs Ollama on `127.0.0.1:11435` while the app is
   open. It is separate from you.
 
 ## Doing things for the person

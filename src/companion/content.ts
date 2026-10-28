@@ -81,11 +81,11 @@ export const pageTips: Record<Page, { normal: string[]; kids: string[] }> = {
   },
   assistant: {
     normal: [
-      "The **Assistant** is an AI that runs on this PC: your questions never leave it.",
-      "It reads the guides and sees which systems you have, so you can ask things like *how do I update my Ubuntu?*",
+      "**Ask Pip** is me, with an AI that runs on this PC: your questions never leave it.",
+      "I read the guides and see which systems you have, so you can ask me things like *how do I update my Ubuntu?*",
       "Prefer Claude or Codex? **Settings** can install an EasyWSL skill for them instead.",
     ],
-    kids: ["The Assistant answers questions. Ask a grown-up to help you use it."],
+    kids: ["Here you can ask me questions by typing! Ask a grown-up to help you."],
   },
   help: {
     normal: [
@@ -112,9 +112,9 @@ export const explanations: [string, string][] = [
   ["Get Linux", "Choose a Linux to install. Each one is described in plain words."],
   ["Docker", "Run ready-made apps in containers, and use the docker command."],
   ["Learn", "Guided lessons, hands-on challenges and Kids mode."],
-  ["Assistant", "Ask an AI on this PC about EasyWSL, Linux, WSL, Windows and Docker."],
+  ["Ask Pip", "Ask me anything about EasyWSL, Linux, WSL, Windows and Docker. My AI runs on this PC."],
   ["Help", "Guides for everything in EasyWSL and Linux, with a search."],
-  ["Settings", "Where new systems go, desktop options, Docker, the assistant, Kids mode and me."],
+  ["Settings", "Where new systems go, desktop options, Docker, my AI, Kids mode and me."],
   ["Terminal", "Opens a command line in this system: you type a command, press Enter, and it runs."],
   ["Open desktop", "Opens this system's desktop in its own window. Close the window to end the session."],
   ["Set up and open", "Finishes setting up the desktop the first time, then opens it."],
@@ -148,7 +148,7 @@ export const explanations: [string, string][] = [
   ["Kids mode", "Switches to friendly projects for children, and turns me into a teacher!"],
   ["Search the guides", "Search all the guides. Try `\"exact words\"`, `-leave-out`, `title:`, `in:ubuntu` or `code:apt`."],
   ["Other ways to open", "More ways to open this system: its terminal, or another desktop."],
-  ["Send", "Sends your question to the assistant."],
+  ["Send", "Sends your question to me."],
   ["Hint", "Shows a clue. No penalty for peeking!"],
   ["Check", "Checks the flag you typed."],
   ["Set up and open terminal", "Builds the practice files in the system you picked, then opens a terminal right there."],
@@ -232,10 +232,10 @@ export const appTour: TourStep[] = [
     text: "Step-by-step lessons and puzzles you solve in a real terminal. There's a **Kids mode** too.",
   },
   {
-    title: "Assistant",
+    title: "Ask Pip",
     target: "nav:assistant",
     page: "assistant",
-    text: "An optional AI that runs on your own PC, so your questions stay private. It knows the guides and your systems.",
+    text: "Ask me anything, in your own words. My AI is optional and runs on your own PC, so your questions stay private. I know the guides and your systems.",
   },
   {
     title: "Help",

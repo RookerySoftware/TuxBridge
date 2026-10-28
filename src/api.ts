@@ -228,6 +228,37 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
   return invoke<T>(command, args);
 }
 
+const RECENT_KEY = "easywsl.recent";
+
+/** The systems opened most recently (terminal, desktop or files), newest first. Kept in this PC's
+ *  localStorage, which the tray menu's window shares. */
+export function recentSystems(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+function used(name: string) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([name, ...recentSystems().filter((n) => n !== name)].slice(0, 10)));
+  } catch {
+    /* private mode, ignore */
+  }
+}
+
+/** The desktops a system has, the one opened by default first. */
+export function desktopsOf(distro: Distro): { kind: DesktopKind; name: string }[] {
+  const list: { kind: DesktopKind; name: string }[] = [];
+  if (distro.info.desktop) {
+    const name = distro.catalog?.desktop?.name ?? distro.info.desktop.charAt(0).toUpperCase() + distro.info.desktop.slice(1);
+    list.push({ kind: "own", name });
+  }
+  if (distro.info.hyprland) list.push({ kind: "hyprland", name: "Hyprland" });
+  return list;
+}
+
 export const api = {
   systemCheck: () => call<Readiness>("system_check"),
   systemFix: (state: string) => call<Readiness>("system_fix", { state }),
@@ -244,15 +275,21 @@ export const api = {
   listJobs: () => call<Job[]>("list_jobs"),
   dismissJob: (id: number) => call<void>("dismiss_job", { id }),
   jobLogTail: (id: number) => call<string>("job_log_tail", { id }),
-  openTerminal: (name: string) => call<void>("open_terminal", { name }),
+  openTerminal: (name: string) => (used(name), call<void>("open_terminal", { name })),
   /** Sets up a Learn quest in a system and opens a terminal there. */
   startQuest: (name: string, quest: string) => call<void>("start_quest", { name, quest }),
-  openFiles: (name: string) => call<void>("open_files", { name }),
+  openFiles: (name: string) => (used(name), call<void>("open_files", { name })),
   reveal: (path: string) => call<void>("reveal", { path }),
   stop: (name: string) => call<void>("stop_distro", { name }),
   setDefault: (name: string) => call<void>("set_default", { name }),
   remove: (name: string) => call<void>("remove_distro", { name }),
-  openDesktop: (name: string, kind: DesktopKind) => call<void>("open_desktop", { name, kind }),
+  openDesktop: (name: string, kind: DesktopKind) => (used(name), call<void>("open_desktop", { name, kind })),
+  /** The tray menu: fit its window to `height` and show it; hide it. */
+  trayFit: (height: number) => call<void>("tray_fit", { height }),
+  trayHide: () => call<void>("tray_hide"),
+  /** Shows the main window, on a page if given. */
+  showWindow: (page?: string) => call<void>("show_window", { page }),
+  quit: () => call<void>("quit_app"),
   listSessions: () => call<Session[]>("list_sessions"),
   getSettings: () => call<Settings>("get_settings"),
   setSettings: (settings: Settings) => call<void>("set_settings", { settings }),
@@ -292,7 +329,7 @@ export const api = {
 };
 
 /** Subscribes to a backend event; returns the function that unsubscribes. */
-export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed" | "ai-changed" | "ai-chunk", handler: (payload: T) => void): () => void {
+export function on<T>(event: "job" | "session" | "distros-changed" | "docker-changed" | "ai-changed" | "ai-chunk" | "navigate" | "tray-shown", handler: (payload: T) => void): () => void {
   if (!inApp) {
     const listener = (e: Event) => handler((e as CustomEvent<T>).detail);
     window.addEventListener(`mock:${event}`, listener);

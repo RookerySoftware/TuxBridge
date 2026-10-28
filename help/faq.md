@@ -98,4 +98,4 @@ capitals), or it's a script in the current folder (run it as `./name`).
 
 **I see an error I don't understand.**
 Search it in these guides (paste a few words of it), check [Common error messages](errors.md),
-or ask the **Assistant**.
+or **Ask Pip**.

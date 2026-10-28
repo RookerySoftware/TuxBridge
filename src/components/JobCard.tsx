@@ -97,7 +97,7 @@ export default function JobCard({ job, onDismiss }: { job: Job; onDismiss: () =>
         <div className="mt-4 flex flex-wrap gap-2">
           {failed && assistant && job.kind !== "assistant" && (
             <Button icon={<Sparkles className="size-4" />} onClick={() => ask(job)}>
-              Ask the assistant
+              Ask Pip
             </Button>
           )}
           <Button variant="ghost" icon={<FileText className="size-4" />} onClick={() => api.reveal(job.log)}>

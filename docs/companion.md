@@ -30,3 +30,16 @@ State lives in `localStorage` (`store.ts`, `prefs.ts`); nothing leaves the PC.
 graduation cap in Kids mode), cheeks and a few moods. It is **not Tux** and not based on
 Larry Ewing's Tux image, so the project owns it outright and can use it in a paid product, on the
 website, or as a trademark. Keep it that way: don't paste in Tux or other penguin art.
+
+## Pip everywhere
+
+- **The app icon** (taskbar, installer, tray) is generated from `src-tauri/icons/pip.svg`:
+  `pnpm tauri icon src-tauri/icons/pip.svg -o src-tauri/icons` (then delete the `android` and
+  `ios` folders it adds).
+- **The tray:** closing the window hides EasyWSL to the notification area. A left click on Pip
+  opens it; a right click opens EasyWSL's own tray menu (`src/tray/TrayMenu.tsx`, a small
+  borderless window, because native menus can't tell left from right clicks on an item): the
+  five most recent systems (`recentSystems` in `api.ts`; click opens the desktop, or a terminal
+  when there's none; right-click offers open desktop, open terminal, stop), Open EasyWSL,
+  Settings and Quit. A second launch shows the running copy (single-instance plugin).
+- **Ask Pip:** the local AI speaks as Pip (its instructions in `src/assistant/context.ts`).

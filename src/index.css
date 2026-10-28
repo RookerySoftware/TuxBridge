@@ -80,6 +80,14 @@ body {
   cursor: default;
 }
 
+/* The tray menu's window is see-through around its rounded panel. */
+html.tray,
+html.tray body {
+  background: transparent;
+  height: auto;
+  overflow: hidden;
+}
+
 input,
 textarea {
   user-select: text;

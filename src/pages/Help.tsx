@@ -303,7 +303,7 @@ export default function Help({ topic, onTopic }: { topic: string | null; onTopic
             {resultCount === 0 && (
               <div className="space-y-2 text-sm text-muted">
                 <p>Try fewer words, a shorter form of a word with <code className="font-mono">*</code> (like <code className="font-mono">instal*</code>), or <code className="font-mono">OR</code> between alternatives.</p>
-                <p>Or ask the <b className="text-ink">Assistant</b>, which can also answer from what it knows.</p>
+                <p>Or <b className="text-ink">Ask Pip</b>, who can also answer from what Pip knows.</p>
               </div>
             )}
             {results.map((r) => (

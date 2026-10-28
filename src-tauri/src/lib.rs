@@ -716,14 +716,134 @@ fn skill_export(app: AppHandle) -> Result<String, String> {
     Ok(zip)
 }
 
+/// Brings the main window back from the tray (or from behind other windows).
+fn show_main(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// The tray menu's width, in logical pixels; its height follows what it lists (`tray_fit`).
+const TRAY_WIDTH: f64 = 290.0;
+
+/// Where the tray icon was right-clicked: the tray menu opens just above it.
+#[derive(Default)]
+struct TrayAnchor(std::sync::Mutex<Option<tauri::PhysicalPosition<f64>>>);
+
+/// Pip in the notification area. A left click opens the window; a right click opens EasyWSL's own
+/// tray menu (a small window, src/tray/TrayMenu.tsx), because a native menu can't tell a left
+/// click on an item from a right one: recent systems open their desktop on a left click and offer
+/// more on a right click.
+fn tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    tauri::WebviewWindowBuilder::new(app, "tray", tauri::WebviewUrl::App("index.html".into()))
+        .initialization_script("window.__EASYWSL_TRAY__ = true;")
+        .title("EasyWSL")
+        .inner_size(TRAY_WIDTH, 300.0)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .build()?;
+
+    let mut builder = TrayIconBuilder::with_id("main").tooltip("EasyWSL").on_tray_icon_event(|tray, event| {
+        if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, .. } = event {
+            let app = tray.app_handle();
+            match button {
+                MouseButton::Left => show_main(app),
+                MouseButton::Right => {
+                    *app.state::<TrayAnchor>().0.lock().unwrap() = Some(position);
+                    // The menu loads its list and calls tray_fit, which places and shows it.
+                    let _ = app.emit_to("tray", "tray-shown", ());
+                }
+                _ => {}
+            }
+        }
+    });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
+/// Sizes the tray menu to its content and shows it above the spot the icon was clicked, kept on
+/// that screen.
+#[tauri::command]
+fn tray_fit(app: AppHandle, height: f64) -> Result<(), String> {
+    let window = app.get_webview_window("tray").ok_or("No tray menu.")?;
+    let anchor = (*app.state::<TrayAnchor>().0.lock().unwrap()).ok_or("The tray icon wasn't clicked.")?;
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    let (w, h) = (TRAY_WIDTH * scale, height.min(640.0) * scale);
+    let (mut x, mut y) = (anchor.x - w, anchor.y - h);
+    if let Ok(Some(m)) = window.monitor_from_point(anchor.x, anchor.y) {
+        let (mx, my) = (m.position().x as f64, m.position().y as f64);
+        let (mw, mh) = (m.size().width as f64, m.size().height as f64);
+        x = x.clamp(mx, mx + mw - w);
+        // A taskbar at the top: open below the click instead.
+        if y < my {
+            y = anchor.y;
+        }
+        y = y.min(my + mh - h);
+    }
+    window.set_size(tauri::PhysicalSize::new(w, h)).map_err(|e| e.to_string())?;
+    window.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn tray_hide(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("tray") {
+        let _ = window.hide();
+    }
+}
+
+/// Shows the main window, on `page` if given ("settings").
+#[tauri::command]
+fn show_window(app: AppHandle, page: Option<String>) {
+    tray_hide(app.clone());
+    show_main(&app);
+    if let Some(page) = page {
+        let _ = app.emit_to("main", "navigate", page);
+    }
+}
+
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Opening EasyWSL again while it sits in the tray shows the window it already has.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_opener::init())
+        // Closing the window keeps EasyWSL in the tray (desktops, installs and Docker keep going);
+        // Quit in the tray's menu ends it.
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+            // The tray menu goes away when you click elsewhere, like a menu.
+            tauri::WindowEvent::Focused(false) if window.label() == "tray" => {
+                let _ = window.hide();
+            }
+            _ => {}
+        })
+        .manage(TrayAnchor::default())
         .manage(Store::load())
         .manage(Jobs::default())
         .manage(desktop::Sessions::default())
         .setup(|app| {
+            tray(app)?;
             // Docker comes back with the app (after Windows restarted, say), when it was set up
             // and the setting is on.
             let handle = app.handle().clone();
@@ -791,6 +911,10 @@ pub fn run() {
             skill_install,
             skill_remove,
             skill_export,
+            tray_fit,
+            tray_hide,
+            show_window,
+            quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EasyWSL");

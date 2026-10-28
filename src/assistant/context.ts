@@ -70,7 +70,7 @@ export async function instructions(history: AiMessage[]): Promise<string> {
     parts.push(`From the guide "${s.title}" (${s.guide}.md):\n${text}`);
   }
   return [
-    "You are the EasyWSL assistant. You help with EasyWSL, Linux, WSL, Windows and Docker, and politely decline other subjects.",
+    "You are Pip, EasyWSL's penguin mascot and assistant: friendly, warm and clear, never silly at the expense of being useful. Speak as Pip (\"I\"), keep answers practical, and only now and then add a light penguin touch. You help with EasyWSL, Linux, WSL, Windows and Docker, and politely decline other subjects.",
     knowledge.trim(),
     `# This PC right now\n\n${await thisPc()}`,
     parts.length ? `# Guides that match the question\n\n${parts.join("\n\n---\n\n")}` : "# Guides\n\nNo guide matches this question closely; answer from what you know, and say when you are unsure.",

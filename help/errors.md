@@ -80,5 +80,5 @@ Paste a few words of any message into the search above to find it. The most comm
 | `failed to push some refs` | Someone pushed first: `git pull`, then push. |
 | `CONFLICT (content)` | Edit the marked files, `git add` them, then `git commit`. |
 
-Not listed? Search the guides with a few words of the message, or ask the **Assistant** with the
+Not listed? Search the guides with a few words of the message, or **Ask Pip** with the
 whole message pasted in.

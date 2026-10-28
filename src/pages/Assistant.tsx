@@ -1,4 +1,4 @@
-// The assistant: setting it up (choosing a model size), and the chat.
+// Ask Pip: the local AI assistant, which speaks as Pip, the mascot. Setting it up (choosing a model size), and the chat.
 
 import { useEffect, useRef, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
@@ -8,6 +8,7 @@ import { ArrowUp, Check, Copy, Cpu, Loader2, Lock, MessageSquarePlus, Sparkles, 
 import { api, inApp, on, type AiModel, type AiStatus, type Job } from "../api";
 import { Badge, Button, Card, Notice } from "../components/ui";
 import JobCard from "../components/JobCard";
+import Penguin from "../companion/Penguin";
 import { newChat, send, setDraft, setInstalled, stop, useAssistant } from "../assistant/store";
 
 export function useAiStatus() {
@@ -32,13 +33,11 @@ function SetUp({ status, busy }: { status: AiStatus; busy: boolean }) {
   return (
     <Card className="space-y-5 p-6">
       <div className="flex items-start gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-          <Sparkles className="size-6" />
-        </div>
+        <Penguin size={52} mood="happy" className="shrink-0" />
         <div className="space-y-1">
-          <h2 className="font-display text-lg font-semibold">An assistant that knows Linux and EasyWSL</h2>
+          <h2 className="font-display text-lg font-semibold">Pip, an AI that knows Linux and EasyWSL</h2>
           <p className="text-muted">
-            Ask it anything about EasyWSL, Linux, WSL, Windows or Docker, in your own words. It knows EasyWSL's guides and sees
+            Ask Pip anything about EasyWSL, Linux, WSL, Windows or Docker, in your own words. Pip knows EasyWSL's guides and sees
             which systems and containers you have, so its answers fit your PC.
           </p>
         </div>
@@ -100,7 +99,7 @@ function SetUp({ status, busy }: { status: AiStatus; busy: boolean }) {
             setStarting(false);
           }}
         >
-          Install the assistant
+          Install Pip's AI
         </Button>
       </div>
     </Card>
@@ -209,7 +208,7 @@ function Chat({ status, onHelp }: { status: AiStatus; onHelp: (topic: string) =>
     <div className="-mx-8 -my-7 flex h-[calc(100%+3.5rem)] flex-col">
       <header className="flex items-center justify-between gap-4 border-b border-line px-8 py-4">
         <div>
-          <h1 className="font-display text-xl font-semibold">Assistant</h1>
+          <h1 className="flex items-center gap-2 font-display text-xl font-semibold"><Penguin size={28} /> Ask Pip</h1>
           <p className="text-xs text-muted">
             {model ? `${model.name} model` : "Local model"} · runs on this PC · can be wrong, so check what it suggests
           </p>
@@ -223,11 +222,9 @@ function Chat({ status, onHelp }: { status: AiStatus; onHelp: (topic: string) =>
         <div className="mx-auto max-w-3xl space-y-5">
           {messages.length === 0 && (
             <div className="space-y-4 pt-8 text-center">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-                <Sparkles className="size-6" />
-              </div>
+              <Penguin size={64} mood="happy" className="mx-auto" />
               <div>
-                <h2 className="font-display text-lg font-semibold">What do you want to do?</h2>
+                <h2 className="font-display text-lg font-semibold">Hi! What do you want to do?</h2>
                 <p className="text-sm text-muted">Ask about EasyWSL, Linux, WSL, Windows or Docker.</p>
               </div>
               <div className="mx-auto grid max-w-2xl gap-2 sm:grid-cols-2">
@@ -245,7 +242,9 @@ function Chat({ status, onHelp }: { status: AiStatus; onHelp: (topic: string) =>
                 <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-[15px] text-accent-ink">{m.content}</div>
               </div>
             ) : (
-              <div key={i} className="space-y-2">
+              <div key={i} className="flex gap-3">
+                <Penguin size={30} className="mt-0.5 shrink-0" mood={answering !== null && i === messages.length - 1 ? "think" : "idle"} />
+                <div className="min-w-0 flex-1 space-y-2">
                 {m.content ? (
                   <div className="space-y-3 text-[15px]">
                     <Markdown remarkPlugins={[remarkGfm]} components={components}>
@@ -255,10 +254,11 @@ function Chat({ status, onHelp }: { status: AiStatus; onHelp: (topic: string) =>
                 ) : answering !== null && i === messages.length - 1 ? (
                   <div className="flex items-center gap-2 text-sm text-muted">
                     <Loader2 className="size-4 animate-spin" />
-                    {status.running ? "Thinking" : "Starting the assistant (the first answer takes a little longer)"}
+                    {status.running ? "Thinking" : "Waking Pip up (the first answer takes a little longer)"}
                   </div>
                 ) : null}
                 {m.error && <Notice tone="bad">{m.error}</Notice>}
+                </div>
               </div>
             ),
           )}
@@ -308,7 +308,7 @@ export default function Assistant({ jobs, onDismissJob, onHelp }: { jobs: Job[];
   if (!status) {
     return (
       <div className="flex items-center gap-2 text-muted">
-        <Loader2 className="size-4 animate-spin" /> Checking the assistant
+        <Loader2 className="size-4 animate-spin" /> Checking Pip's AI
       </div>
     );
   }
@@ -316,8 +316,8 @@ export default function Assistant({ jobs, onDismissJob, onHelp }: { jobs: Job[];
   return (
     <div className="max-w-3xl space-y-6">
       <header className="space-y-1">
-        <h1 className="font-display text-2xl font-semibold">Assistant</h1>
-        <p className="text-muted">Help with EasyWSL, Linux, WSL, Windows and Docker, from an AI on your own PC.</p>
+        <h1 className="font-display text-2xl font-semibold">Ask Pip</h1>
+        <p className="text-muted">Pip answers questions about EasyWSL, Linux, WSL, Windows and Docker, with an AI on your own PC.</p>
       </header>
       {jobs.map((j) => (
         <JobCard key={j.id} job={j} onDismiss={() => onDismissJob(j.id)} />

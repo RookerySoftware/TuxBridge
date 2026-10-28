@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle, BookOpen, ChevronDown, Download, FolderOpen, Loader2, LayoutDashboard, Monitor, Plus, Power, Sparkles, Star, SquareTerminal, Trash2,
 } from "lucide-react";
-import { api, type DesktopKind, type Distro, type Job, type Session } from "../api";
+import { api, desktopsOf, type DesktopKind, type Distro, type Job, type Session } from "../api";
 import { Badge, Button, Card, Dialog, Menu, Monogram, Notice, Toggle, Field, inputClass } from "../components/ui";
 import JobCard from "../components/JobCard";
 import { guides } from "../guides";
@@ -53,17 +53,6 @@ function RemoveDialog({ distro, onClose }: { distro: Distro; onClose: () => void
       </div>
     </Dialog>
   );
-}
-
-/** The desktops a system has, the one opened by default first. */
-function desktopsOf(distro: Distro): { kind: DesktopKind; name: string }[] {
-  const list: { kind: DesktopKind; name: string }[] = [];
-  if (distro.info.desktop) {
-    const name = distro.catalog?.desktop?.name ?? distro.info.desktop.charAt(0).toUpperCase() + distro.info.desktop.slice(1);
-    list.push({ kind: "own", name });
-  }
-  if (distro.info.hyprland) list.push({ kind: "hyprland", name: "Hyprland" });
-  return list;
 }
 
 function AddDesktopDialog({ distro, kind, onClose }: { distro: Distro; kind: DesktopKind; onClose: () => void }) {
