@@ -3,6 +3,49 @@ import { api, type Readiness, type Settings as SettingsData } from "../api";
 import { Button, Card, Field, Toggle, inputClass } from "../components/ui";
 import AssistantSettings from "../components/AssistantSettings";
 import SkillSettings from "../components/SkillSettings";
+import Penguin from "../companion/Penguin";
+import { pointing, setPointing, startAppTour } from "../companion/store";
+import { useCompanionOn, useKidsMode } from "../prefs";
+
+function CompanionSettings() {
+  const [on, setOn] = useCompanionOn();
+  const [kids, setKids] = useKidsMode();
+  const [point, setPoint] = useState(pointing);
+  return (
+    <Card className="space-y-5 p-5">
+      <div className="flex items-center gap-3">
+        <Penguin size={40} kids={kids} mood="happy" />
+        <div>
+          <h2 className="font-display font-semibold">Pip, the penguin</h2>
+          <p className="text-sm text-muted">A companion in the corner with tips, explanations and fun facts.</p>
+        </div>
+      </div>
+      <Toggle
+        checked={on || kids}
+        disabled={kids}
+        onChange={setOn}
+        label="Show Pip"
+        description={kids ? "Always on in Kids mode, where Pip teaches." : "Tips for each page, suggestions and fun facts. Click Pip any time for more."}
+      />
+      <Toggle
+        checked={point}
+        onChange={(v) => {
+          setPoint(v);
+          setPointing(v);
+        }}
+        label="Explain buttons when I point at them"
+        description="Hold the mouse over a button for a moment and Pip says what it does."
+      />
+      <Toggle
+        checked={kids}
+        onChange={setKids}
+        label="Kids mode"
+        description="Friendly projects on the Learn page, and Pip becomes a teacher with little lessons and quizzes."
+      />
+      <Button onClick={startAppTour}>Show the welcome tour again</Button>
+    </Card>
+  );
+}
 
 export default function Settings({ readiness }: { readiness: Readiness }) {
   const [settings, setSettings] = useState<SettingsData | null>(null);
@@ -91,6 +134,8 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
           description="Docker keeps running after EasyWSL closes, until Windows restarts or you stop it on the Docker page."
         />
       </Card>
+
+      <CompanionSettings />
 
       <AssistantSettings />
       <SkillSettings />

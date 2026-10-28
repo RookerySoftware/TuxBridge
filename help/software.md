@@ -34,6 +34,41 @@ Programs with a window (Firefox, GIMP, VS Code's Linux version...) open as their
 your Windows desktop, through WSL's built-in support, even without a Linux desktop. Inside a
 Linux desktop opened from EasyWSL, they open on that desktop instead.
 
+## Flatpak
+
+Flatpak installs desktop apps from **Flathub** on any Linux, in their newest versions, each in
+its own sandbox:
+
+```bash
+sudo apt install flatpak            # or: sudo pacman -S flatpak
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak search inkscape
+flatpak install flathub org.inkscape.Inkscape
+flatpak run org.inkscape.Inkscape
+flatpak update                      # update every Flatpak
+flatpak uninstall --unused          # tidy up
+```
+
+## AppImage
+
+Some programs come as a single `.AppImage` file: make it runnable and start it.
+
+```bash
+chmod +x Program.AppImage
+./Program.AppImage
+```
+
+Many need FUSE: `sudo apt install libfuse2` (Ubuntu 24.04 and newer: `libfuse2t64`), or run them
+with `--appimage-extract-and-run`.
+
+## Which version do I have?
+
+```bash
+<program> --version
+apt policy <name>        # installed and available versions (apt)
+pacman -Qi <name>        # installed version (pacman)
+```
+
 ## When a program is not in the repositories
 
 - **Arch:** the Arch User Repository (AUR) has almost everything, built from recipes written by

@@ -11,6 +11,7 @@ import Learn from "./pages/Learn";
 import Help from "./pages/Help";
 import Assistant, { useAiStatus } from "./pages/Assistant";
 import { onOpen } from "./assistant/store";
+import Companion from "./companion/Companion";
 
 type Page = "systems" | "get" | "docker" | "learn" | "assistant" | "help" | "settings";
 
@@ -55,6 +56,7 @@ function Main({ readiness }: { readiness: Readiness }) {
           {nav.map((n) => (
             <button
               key={n.page}
+              data-tour={`nav:${n.page}`}
               onClick={() => setPage(n.page)}
               className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition
                 ${page === n.page ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}
@@ -71,6 +73,7 @@ function Main({ readiness }: { readiness: Readiness }) {
         </nav>
         <div className="mt-auto">
           <button
+            data-tour="nav:settings"
             onClick={() => setPage("settings")}
             className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition
               ${page === "settings" ? "bg-accent-soft font-medium text-accent" : "text-ink hover:bg-surface-2"}`}
@@ -100,6 +103,7 @@ function Main({ readiness }: { readiness: Readiness }) {
         {page === "help" && <Help topic={topic} onTopic={setTopic} />}
         {page === "settings" && <Settings readiness={readiness} />}
       </main>
+      <Companion page={page} distros={distros} onGo={setPage} onHelp={help} />
     </div>
   );
 }

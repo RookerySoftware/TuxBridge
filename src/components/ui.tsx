@@ -48,8 +48,13 @@ export function IconButton({ label, children, ...props }: ButtonHTMLAttributes<H
   );
 }
 
-export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-xl border border-line bg-surface shadow-[var(--shadow)] ${className}`}>{children}</div>;
+/** `tour` names the card for the companion's tours (data-tour). */
+export function Card({ className = "", tour, children }: { className?: string; tour?: string; children: ReactNode }) {
+  return (
+    <div data-tour={tour} className={`rounded-xl border border-line bg-surface shadow-[var(--shadow)] ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 const badgeTones = {

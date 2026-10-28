@@ -12,7 +12,17 @@ export interface Guide {
 }
 
 /** The sections, in the order the list shows them. */
-export const SECTIONS = ["Start here", "Using Linux", "Desktops", "Docker", "Your system", "When something goes wrong"];
+export const SECTIONS = [
+  "Start here",
+  "Using Linux",
+  "Programming",
+  "WSL and Windows",
+  "Desktops",
+  "Docker",
+  "Your system",
+  "When something goes wrong",
+  "Reference",
+];
 
 const files = import.meta.glob("../help/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 

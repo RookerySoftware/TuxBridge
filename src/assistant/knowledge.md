@@ -30,12 +30,23 @@ It is for people new to Linux. Everything runs on the person's own PC.
   style challenge sets). A quest builds a folder of harmless practice files in a system you pick
   and opens a terminal there; you hunt for flags and type them back. Quests: **Linux Basics**
   (any system), **Security Basics** (Kali or Parrot; defensive only — reading logs, decoding,
-  checking files), and a **Treasure Hunt** for children. A **Kids mode** toggle swaps in gentler
-  projects.
-- **Help**: the guides, with a search.
+  checking files), and a **Treasure Hunt** for children. A **Kids mode** toggle (also in
+  Settings) swaps in gentler projects.
+- **Help**: about 50 guides in sections (Start here, Using Linux, Programming, WSL and Windows,
+  Desktops, Docker, Your system, When something goes wrong, Reference), with a search that
+  understands operators: `"exact words"`, `-leave-out`, `a OR b`, `word*`, `title:`,
+  `in:<guide>` (e.g. `in:ubuntu`), `section:`, `code:`. Ctrl+K or / focuses it; results open the
+  guide at the matching heading with the words highlighted. Spelling slips are corrected.
+- **Pip**, the penguin companion in the bottom-right corner: tips for each page, explanations of
+  buttons you point at, suggestions and fun facts. Off by default (Settings → **Show Pip**), always
+  on in Kids mode, where it also teaches short lessons with a quiz (the book in its bubble). On
+  first launch Pip offers a skippable tour of the app (Settings → **Show the welcome tour
+  again**). The install form's **Show me around** (on by default) has Pip walk you through the
+  new system once it's ready.
 - **Assistant**: this chat.
 - **Settings**: the folder for new systems; desktops (open full screen, resolution, frame
-  rate); Docker (start it when EasyWSL opens); the assistant (its model, removing it).
+  rate); Docker (start it when EasyWSL opens); Pip and Kids mode; the assistant (its model,
+  removing it).
 
 # Common tasks, the simplest way
 

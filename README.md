@@ -24,8 +24,14 @@ Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
   Parrot) and HackTheBox-style quests that build harmless practice files in a chosen system and
   have you hunt for flags; a defensive Security Basics quest for Kali and Parrot, and a Kids
   mode with a gentle Treasure Hunt. See [docs/learn.md](docs/learn.md)
-- **Help**: guides for newcomers, from "what is Linux" to each system's basics (`help/`, in
-  Markdown, to be shared with the website)
+- **Help**: about 50 guides, from "what is Linux" to programming, WSL settings, networking, the
+  GPU, each desktop and each system in depth (`help/`, in Markdown, to be shared with the
+  website), with a search that understands operators (`"exact"`, `-word`, `OR`, `word*`,
+  `title:`, `in:ubuntu`, `section:`, `code:`), corrects typos and opens the guide at the right
+  heading
+- **Pip**: an optional penguin companion with tips, explanations of what you point at and fun
+  facts; a skippable first-launch tour; "Show me around" tours of a new system; and little
+  lessons with quizzes in Kids mode. See [docs/companion.md](docs/companion.md)
 - Says so plainly when WSL itself stops responding, and offers to restart it
 
 The Hyprland desktop comes from [hyprland-wsl](https://github.com/ItsOverk1ll/hyprland-wsl),

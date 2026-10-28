@@ -36,8 +36,14 @@ who have never used WSL, Linux or a command line. Name is a working title.
 - Done: the Help page (sections, search, links between guides, "Guide to ..." in each system's
   menu) and the guides in `help/` (front matter: title, summary, section, order), a full guide
   for every distro (including Parrot), plus backups
-- Next: pictures in the guides, the GNOME/Cinnamon/Xfce basics as guides of their own, the
-  website sharing `help/`
+- Done (2026-10-28): about 30 more guides — Programming (Git/SSH, VS Code, Python, Node,
+  other languages), WSL and Windows (the wsl command, .wslconfig/wsl.conf, interop, networking,
+  GPU, USB, disk space), GNOME/Cinnamon/Xfce, editors, finding, pipes, archives, shell setup,
+  scripts, scheduling, a command reference, shortcuts, glossary, FAQ, error messages; the
+  Ubuntu, Mint, Debian, Arch, CachyOS and Omarchy guides rewritten in depth. Help's search
+  (`src/search.ts`) works per heading, with operators, stemming, synonyms, typo correction and
+  highlighting; the assistant uses the same index
+- Next: pictures in the guides, the website sharing `help/`
 
 ## Phase 4: learn (started, see docs/learn.md)
 
@@ -45,6 +51,10 @@ who have never used WSL, Linux or a command line. Name is a working title.
   quests that build practice files in a chosen system (bundled `quest-*.sh`) and check flags in
   the browser against their SHA-256; a defensive Security Basics quest for Kali and Parrot; a
   Kids mode with a Treasure Hunt
+- Done: **Pip**, a penguin companion (original artwork, `src/companion/`): page tips, button
+  explanations on hover, suggestions, fun facts; a skippable first-launch tour with a spotlight;
+  "Show me around" tours of a newly installed system; in Kids mode, short lessons with quizzes
+  and stars. See docs/companion.md
 - Next: more lessons, a lesson that drives the app's own buttons, progress shared with the
   assistant
 - Later: a friendly assistant window over the desktop viewer that follows Hyprland's event

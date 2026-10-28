@@ -3,67 +3,16 @@
 // answers well about what it is shown, so finding the right sections matters more than its size.
 
 import { api, type AiMessage, type Distro } from "../api";
-import { guides } from "../guides";
+import { bestParts } from "../search";
 import knowledge from "./knowledge.md?raw";
 
-interface Section {
-  guide: string;
-  title: string;
-  text: string;
-  words: Map<string, number>;
-  length: number;
-}
-
-/** Words that say nothing about the subject. */
-const COMMON = new Set(
-  ("the and for you your are can how what with that this from have not but all use does into out its was will " +
-    "when then them they there their which where who why get got just like want need make some any one more " +
-    "about also only should would could may other than very way help please thanks thank know").split(" "),
-);
-
-function words(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z0-9][a-z0-9.+_-]*[a-z0-9]|[a-z0-9]/g) ?? []).filter((w) => w.length > 1 && !COMMON.has(w));
-}
-
-function count(list: string[]): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const w of list) m.set(w, (m.get(w) ?? 0) + 1);
-  return m;
-}
-
-/** Each guide split at its ## headings, the guide's title and summary kept with every part. */
-const sections: Section[] = guides.flatMap((g) => {
-  const parts = g.body.split(/\n(?=## )/);
-  return parts.map((part) => {
-    const heading = part.startsWith("## ") ? part.slice(3, part.indexOf("\n")).trim() : "";
-    const title = heading ? `${g.title}: ${heading}` : g.title;
-    // The title counts three times: a section about "Docker" is about Docker.
-    const list = [...words(part), ...words(`${title} ${g.summary}`), ...words(title), ...words(title)];
-    return { guide: g.id, title, text: part.replace(/^# .*\n+/, "").trim(), words: count(list), length: list.length };
-  });
-});
-const averageLength = sections.reduce((n, s) => n + s.length, 0) / Math.max(sections.length, 1);
-const documentFrequency = count(sections.flatMap((s) => [...s.words.keys()]));
-
-/** BM25: the sections that best match the question, best first. */
-export function search(question: string, limit: number): Section[] {
-  const terms = [...new Set(words(question))];
-  const scored = sections.map((s) => {
-    let score = 0;
-    for (const t of terms) {
-      const tf = s.words.get(t) ?? 0;
-      if (!tf) continue;
-      const df = documentFrequency.get(t) ?? 0;
-      const idf = Math.log(1 + (sections.length - df + 0.5) / (df + 0.5));
-      score += (idf * tf * 2.2) / (tf + 1.2 * (0.25 + 0.75 * (s.length / averageLength)));
-    }
-    return { s, score };
-  });
-  return scored
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((x) => x.s);
+/** The parts of the guides that best match the question (split at headings; see search.ts). */
+export function search(question: string, limit: number) {
+  return bestParts(question, limit).map((p) => ({
+    guide: p.guide.id,
+    title: p.heading ? `${p.guide.title}: ${p.heading}` : p.guide.title,
+    text: p.markdown,
+  }));
 }
 
 function describeSystem(d: Distro): string {

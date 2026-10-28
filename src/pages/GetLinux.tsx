@@ -5,6 +5,7 @@ import { Check, ChevronDown, Clock, ExternalLink, HardDrive, LayoutDashboard, Mo
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, inApp, type CatalogEntry, type DesktopChoice, type InstallRequest } from "../api";
 import { Badge, Button, Card, Dialog, Field, Monogram, Notice, Toggle, inputClass } from "../components/ui";
+import { requestShowAround } from "../companion/store";
 
 /** The desktop a new system starts with: its own by default, Hyprland instead, or none. */
 function defaultChoice(entry: CatalogEntry): DesktopChoice {
@@ -48,6 +49,7 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
   const [windowsKey, setWindowsKey] = useState(true);
   const [thirdParty, setThirdParty] = useState(false);
   const [setDefault, setSetDefault] = useState(false);
+  const [showAround, setShowAround] = useState(true);
   const [advanced, setAdvanced] = useState(false);
   const [location, setLocation] = useState("");
   const [locationTouched, setLocationTouched] = useState(false);
@@ -84,6 +86,7 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
     setError(null);
     try {
       await api.startInstall(request());
+      if (showAround) requestShowAround(name, entry.id);
       onStarted();
     } catch (e) {
       setError(String(e));
@@ -170,6 +173,13 @@ function InstallDialog({ entry, onClose, onStarted }: { entry: CatalogEntry; onC
             <p className="text-xs text-muted">You can add another desktop later.</p>
           </div>
         )}
+
+        <Toggle
+          checked={showAround}
+          onChange={setShowAround}
+          label="Show me around"
+          description="When it is ready, Pip the penguin walks you through your new system: opening it, installing software, updates and where to learn more."
+        />
 
         <div>
           <button type="button" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onClick={() => setAdvanced(!advanced)}>

@@ -11,8 +11,8 @@ import { api } from "../api";
 import { Badge, Button, Card, Notice } from "../components/ui";
 import { lessons, type Lesson } from "../learn/lessons";
 import { quests, hashFlag, type Quest } from "../learn/quests";
+import { useKidsMode } from "../prefs";
 
-const KIDS_KEY = "easywsl.learn.kids";
 const lessonsKey = "easywsl.learn.lessons";
 const questKey = (id: string) => `easywsl.learn.quest.${id}`;
 
@@ -285,13 +285,12 @@ function QuestList({ kids, solvedByQuest, onOpen }: { kids: boolean; solvedByQue
 
 export default function Learn({ distros, onGetLinux }: { distros: Distro[]; onGetLinux: () => void }) {
   const [tab, setTab] = useState<"lessons" | "quests">("lessons");
-  const [kids, setKids] = useState(() => load(KIDS_KEY, false));
+  const [kids, setKids] = useKidsMode();
   const [lessonsDone, setLessonsDone] = useState<string[]>(() => load(lessonsKey, []));
   const [solved, setSolved] = useState<Record<string, number[]>>(() => load(questKey("all"), {}));
   const [openLesson, setOpenLesson] = useState<Lesson | null>(null);
   const [openQuest, setOpenQuest] = useState<Quest | null>(null);
 
-  useEffect(() => save(KIDS_KEY, kids), [kids]);
   useEffect(() => save(lessonsKey, lessonsDone), [lessonsDone]);
   useEffect(() => save(questKey("all"), solved), [solved]);
 
@@ -326,7 +325,7 @@ export default function Learn({ distros, onGetLinux }: { distros: Distro[]; onGe
           <p className="text-muted">{kids ? "Friendly projects and adventures to learn the computer." : "Guided lessons and hands-on challenges for Linux, the terminal and security."}</p>
         </div>
         <button
-          onClick={() => setKids((k) => !k)}
+          onClick={() => setKids(!kids)}
           className={`inline-flex items-center gap-2 rounded-lg border px-3 h-9 text-sm font-medium transition ${kids ? "border-accent bg-accent-soft text-accent" : "border-line hover:bg-surface-2"}`}
         >
           <Baby className="size-4" /> Kids mode{kids ? " on" : ""}

@@ -206,7 +206,7 @@ function DistroCard({ distro, session, onSessionDismiss, onHelp }: { distro: Dis
   ];
 
   return (
-    <Card className="p-5 animate-in">
+    <Card className="p-5 animate-in" tour={`distro:${distro.name}`}>
       <div className="flex items-start gap-4">
         <Monogram title={title} accent={accent} />
         <div className="min-w-0 flex-1">
