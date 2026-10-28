@@ -1,132 +1,103 @@
+<div align="center">
+
+<img src="src-tauri/icons/pip.svg" alt="Pip, TuxBridge's penguin" width="112">
+
 # TuxBridge
 
-Linux on Windows, made easy: a Windows app that installs and runs Linux systems (through WSL)
-for people who have never used Linux or a command line. Each system can get a full Linux
-desktop, Hyprland, with one checkbox. Its mascot is Pip, the little penguin who lives in your
-Linux system and bridges you to the Linux side.
+**Linux on Windows, made easy.**
 
-By [Rookery Software](https://rookerysoftware.app) · [tuxbridge.com](https://tuxbridge.com) (its
-source is in the separate `tuxbridge-website` repository).
+Install real Linux systems next to Windows, open full desktops in a window, run Docker apps in a click,
+and learn as you go, with Pip the penguin to show you around.
 
-Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
+[![Download](https://img.shields.io/badge/download-tuxbridge.com-2c3a57?style=flat-square)](https://tuxbridge.com/#download)
+[![Release](https://img.shields.io/github/v/release/RookerySoftware/TuxBridge?include_prereleases&style=flat-square&label=release&color=149488)](https://github.com/RookerySoftware/TuxBridge/releases)
+[![License](https://img.shields.io/badge/license-Apache%202.0-6c8dff?style=flat-square)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-555?style=flat-square)
 
-## What it does
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshot-dark.png">
+  <img src=".github/assets/screenshot-light.png" alt="TuxBridge's My systems page, with Pip offering a welcome tour" width="860">
+</picture>
 
-- Checks the PC (Windows version, virtualization, WSL) and fixes what it can, with one
-  "Yes" prompt from Windows
-- **Get Linux**: Ubuntu, Arch Linux, Omarchy, Linux Mint, CachyOS, Debian, Kali, Parrot Security, described
-  in plain words; install with a name, an account and a "Use the Hyprland desktop" checkbox
-- **My systems**: open a system's terminal, its files, or its Hyprland desktop; stop it, make
-  it the default, add Hyprland later, remove it; recognises systems installed without TuxBridge
-- **Docker**: one button sets up the free Docker Engine in a hidden system of its own; manage
-  containers, install ready-made apps (media server, cloud storage, AI chat, databases...),
-  and use `docker` from PowerShell and from the Linux systems. See [docs/docker.md](docs/docker.md)
-- **Ask Pip** (optional): Pip, with an AI on the PC, answers questions about TuxBridge, Linux, WSL,
-  Windows and Docker from the guides and the PC's state; or a TuxBridge skill for Claude Code,
-  Codex and claude.ai instead. See [docs/assistant.md](docs/assistant.md)
-- **Learn**: guided lessons (the terminal, software, the file bridge, tours of Ubuntu, Kali and
-  Parrot) and HackTheBox-style quests that build harmless practice files in a chosen system and
-  have you hunt for flags; a defensive Security Basics quest for Kali and Parrot, and a Kids
-  mode with a gentle Treasure Hunt. See [docs/learn.md](docs/learn.md)
-- **Help**: about 50 guides, from "what is Linux" to programming, WSL settings, networking, the
-  GPU, each desktop and each system in depth (`help/`, in Markdown, to be shared with the
-  website), with a search that understands operators (`"exact"`, `-word`, `OR`, `word*`,
-  `title:`, `in:ubuntu`, `section:`, `code:`), corrects typos and opens the guide at the right
-  heading
-- **Pip**: an optional penguin companion with tips, explanations of what you point at and fun
-  facts; a skippable first-launch tour; "Show me around" tours of a new system; and little
-  lessons with quizzes in Kids mode. See [docs/companion.md](docs/companion.md)
-- Says so plainly when WSL itself stops responding, and offers to restart it
+</div>
 
-The Hyprland desktop comes from [hyprland-wsl](https://github.com/ItsOverk1ll/hyprland-wsl),
-whose Linux side is bundled here as the "engine" (`src-tauri/engine`).
+## Why TuxBridge?
 
-## Building
+Windows already includes WSL, a way to run real Linux next to Windows. Getting from there to a
+working Linux, though, usually takes an afternoon of tutorials. TuxBridge turns it into buttons,
+written for people who have never used Linux or a command line, and stays useful once you know your
+way around.
 
-Needs Rust, Node.js with pnpm, and Visual Studio's C++ build tools (all Tauri needs on Windows).
+## Features
+
+- **Checks your PC** for everything Linux needs (virtualization, WSL, Windows features) and fixes
+  what it can, with one prompt from Windows.
+- **Eight Linux systems** described in plain words: Ubuntu, Linux Mint, Debian, Arch Linux, CachyOS,
+  Omarchy, Kali Linux and Parrot Security. Pick a name, an account and a desktop, and TuxBridge does
+  the rest.
+- **Full desktops in a window:** GNOME, Cinnamon, Xfce, KDE Plasma or Hyprland, drawn by
+  TuxBridge's own fast display. No VNC, no network.
+- **Docker in one click:** the free Docker Engine in a system of its own, a gallery of ready-made
+  apps (media server, cloud storage, AI chat, databases), and `docker` from PowerShell and Linux.
+- **Help without leaving the app:** about 50 guides, from "what is Linux" to networking and the GPU,
+  with a search that understands operators like `"exact words"`, `-exclude` and `in:ubuntu`.
+- **Learn by doing:** guided lessons, hands-on challenges in a real terminal, and a Kids mode.
+- **Pip, your guide:** an optional companion with tips, a welcome tour, and a "Show me around" tour
+  of every new system.
+- **Ask Pip:** an optional AI assistant that runs on your own PC, so your questions never leave it.
+- **Built-in feedback and updates:** report a problem from the app, and update TuxBridge from
+  Settings with signed updates.
+
+## Download
+
+Get the latest version from **[tuxbridge.com](https://tuxbridge.com/#download)** or the
+[releases page](https://github.com/RookerySoftware/TuxBridge/releases). The installer is free,
+needs no administrator rights, and works on Windows 10 (21H2 or newer) and Windows 11 with
+virtualization turned on.
+
+> [!NOTE]
+> TuxBridge is in pre-release. The installer isn't code-signed yet, so Windows SmartScreen may
+> warn about it: choose **More info → Run anyway**. Updates from inside the app are signed and
+> verified.
+
+## Privacy
+
+TuxBridge has no accounts and no tracking. Ask Pip runs entirely on your PC. The only thing sent
+anywhere is what you choose to send from the Feedback page, and you can preview the diagnostic
+report before it goes.
+
+## Building from source
 
 ```powershell
 pnpm install
-pnpm tauri dev          # run it
-pnpm tauri build        # installer in src-tauri/target/release/bundle/nsis
+pnpm tauri dev      # run it
+pnpm tauri build    # make the installer
 ```
 
-`pnpm dev` alone serves the window in a browser with a mock backend (made-up systems), for
-working on the UI; `?setup=featuresOff` and the like show the setup screens, `?stuck` the
-"WSL is not responding" banner.
+You'll need Rust, Node.js with pnpm, and Visual Studio's C++ build tools. See
+[docs/development.md](docs/development.md) for the desktop display, tests, releasing, and a map of
+the code. How the main parts work is described in [docs](docs/).
 
-Tests against the real PC (WSL, the registry, Docker Hub): `cargo test -- --ignored` in
-`src-tauri`.
+## Contributing
 
-### Feedback
+Bug reports, ideas and pull requests are welcome. The quickest way to report a problem is the
+**Feedback** page in TuxBridge; for code, see [CONTRIBUTING.md](CONTRIBUTING.md). To report a
+security issue privately, see [SECURITY.md](SECURITY.md).
 
-The Feedback page sends reports to Rookery Software's feedback endpoint,
-`https://feedback.rookerysoftware.app/v1/report`: a small Cloudflare Worker (its own repository,
-`RookerySoftware/feedback`) that checks each report, limits how often one address may send, and
-forwards it to the team's Discord. The Discord webhook is a secret of the Worker, never in the app
-or this repository. To test against another Worker, build with `TUXBRIDGE_FEEDBACK_URL` set.
-## The display
+## Acknowledgements
 
-`display/` holds TuxBridge's own display, used for every desktop (GNOME, Xfce, Cinnamon, Hyprland):
-a Rust agent inside Linux and a Rust viewer window on Windows, talking over wsl.exe (no network,
-no VNC). See [docs/desktops.md](docs/desktops.md).
-Build both before running the app:
-
-```powershell
-pwsh .\scripts\build-display.ps1 -BuildDistro <a distro with Rust, libpipewire-0.3-dev and clang> -BuildUser <its user>
-```
-
-## Updating the engine
-
-```powershell
-pwsh .\scripts\sync-engine.ps1 -Repo <hyprland-wsl clone> -Ref <branch or tag>
-```
-
-copies hyprland-wsl's Linux side from that ref into `src-tauri/engine` and records the commit
-in `src-tauri/engine/VERSION`. Commit the result.
-
-## Releasing
-
-1. Set the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`,
-   and add it to [CHANGELOG.md](CHANGELOG.md).
-2. `pwsh .\scripts\release-build.ps1` refreshes `THIRD-PARTY-NOTICES.md` and builds
-   `src-tauri/target/release/bundle/nsis/TuxBridge_<version>_x64-setup.exe` (Pip on its pages,
-   `src-tauri/installer/`; the hook that upgrades earlier test builds, `src-tauri/installer-hooks.nsh`)
-   and its **signature**, `…-setup.exe.sig`, made with the updater's private key
-   (`%USERPROFILE%\.tauri\tuxbridge-updater.key`; its public half is in `tauri.conf.json`). Keep
-   that key backed up: without it, installed copies can't update any more, only be reinstalled.
-3. Commit, tag `v<version>`, and publish a GitHub release with the installer **and its .sig**, the
-   changelog entry as its notes (`--prerelease` for a pre-release).
-4. Publishing the release puts it on tuxbridge.com by itself: the workflow
-   `.github/workflows/publish-to-site.yml` copies the installer into the website repository,
-   updates its download section, the `/download/TuxBridge-setup.exe` redirect and
-   `download/latest.json` (what Settings → **Update TuxBridge** reads: version, notes, address and
-   signature), and pushes; Cloudflare Pages deploys it within a minute or two. (It needs the
-   `WEBSITE_DEPLOY_KEY` secret: a deploy key with write access to
-   `RookerySoftware/tuxbridge-website`. Without it, run `.github/scripts/publish_to_site.py`
-   against a local copy of the website and push.)
-
-## Layout
-
-| Path | What |
-| --- | --- |
-| `src-tauri/src/wsl.rs` | wsl.exe and the registry: distros, running ones, time limits |
-| `src-tauri/src/system.rs` | Is the PC ready, and fixing it |
-| `src-tauri/src/catalog.rs` | The systems on offer, described for newcomers |
-| `src-tauri/src/install.rs` | Installing one, step by step |
-| `src-tauri/src/desktop.rs` | Desktop sessions in TuxBridge's viewer |
-| `src-tauri/src/docker.rs` | Downloading Docker Hub images (for systems without a WSL image) |
-| `src-tauri/src/containers.rs` | Docker: the engine, the docker command, containers, installing apps |
-| `src-tauri/src/apps.rs` | The app gallery |
-| `src-tauri/linux/` | TuxBridge's scripts inside Linux: desktops, the Docker engine and client |
-| `src-tauri/src/jobs.rs` | Long tasks with steps and a log |
-| `src/` | The window (React, Tailwind) |
-
-## Licence
-
-TuxBridge is licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Rookery Software;
-see [NOTICE](NOTICE). The libraries it uses are listed in
+TuxBridge stands on great open-source work, including [Tauri](https://tauri.app),
+[Hyprland](https://hyprland.org), [Omarchy](https://omarchy.org), the
+[Docker Engine](https://docs.docker.com/engine/) (Moby), [Ollama](https://ollama.com) and every
+Linux distribution it installs. The full list of libraries is in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-"TuxBridge", "Rookery Software" and Pip (the penguin's name and artwork) are trademarks of
-Rookery Software and are not covered by the licence: forks need a name and logo of their own.
+## License
+
+TuxBridge is open source under the [Apache License 2.0](LICENSE). Copyright 2026
+[Rookery Software](https://rookerysoftware.app); see [NOTICE](NOTICE).
+
+"TuxBridge", "Rookery Software" and Pip (the penguin's name and artwork) are trademarks of Rookery
+Software and aren't covered by the license: forks need a name and logo of their own. Linux® is the
+registered trademark of Linus Torvalds. Windows and WSL are trademarks of Microsoft. TuxBridge is
+an independent project, not affiliated with Microsoft or any Linux distribution.

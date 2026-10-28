@@ -1,7 +1,7 @@
 # Roadmap
 
 TuxBridge: Linux on Windows with as little friction and foreknowledge as possible, for people
-who have never used WSL, Linux or a command line. Free, by Rookery Software, to be open-sourced once finalized.
+who have never used WSL, Linux or a command line. Free and open source (Apache 2.0), by Rookery Software.
 
 ## Phase 1: the app and WSL (done)
 
