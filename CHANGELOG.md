@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 (pre-release), 2026-10-28
+
+- **Fixed:** updating Omarchy opened a broken second terminal tab ("cannot find the file
+  specified") instead of running the update.
+- **Fixed:** in a desktop window, the Windows key could stop reaching Linux (opening the Start
+  menu instead) after a busy moment, until the desktop was reopened.
+
 ## 0.1.2 (pre-release), 2026-10-28
 
 - **Fixed:** on a PC that never had an earlier test build, TuxBridge closed as soon as you started

@@ -303,7 +303,8 @@ fn terminal(name: &str, script: Option<&str>) -> Result<(), String> {
     }
     let wt = dirs::data_local_dir().map(|d| d.join(r"Microsoft\WindowsApps\wt.exe")).filter(|p| p.exists());
     let result = match wt {
-        Some(wt) => std::process::Command::new(wt).args(["-w", "new", "wsl.exe"]).args(&args).spawn(),
+        // Windows Terminal reads every ";" as "open another tab", quoted or not; "\;" is a plain one.
+        Some(wt) => std::process::Command::new(wt).args(["-w", "new", "wsl.exe"]).args(args.iter().map(|a| a.replace(';', r"\;"))).spawn(),
         None => std::process::Command::new(wsl::exe()).args(&args).creation_flags(wsl::CREATE_NEW_CONSOLE).spawn(),
     };
     result.map(|_| ()).map_err(|e| format!("The terminal did not open: {e}"))

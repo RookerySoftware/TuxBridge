@@ -5,6 +5,7 @@
 
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::mpsc::Sender;
 
 use easywsl_protocol::Input;
 
@@ -13,7 +14,10 @@ use crate::keys::{KEY_LEFTMETA, KEY_RIGHTMETA};
 
 static FOCUSED: AtomicBool = AtomicBool::new(false);
 static WINDOW: AtomicIsize = AtomicIsize::new(0);
-static SINK: OnceLock<InputSink> = OnceLock::new();
+/// Keys on their way to the desktop. The hook only queues them: Windows quietly removes a hook
+/// that keeps it waiting (about a second), and writing to Linux can wait that long when the
+/// desktop is busy. The Windows key would then open the Start menu until the desktop reopened.
+static KEYS: OnceLock<Sender<Input>> = OnceLock::new();
 
 pub fn set_focused(focused: bool) {
     FOCUSED.store(focused, Ordering::SeqCst);
@@ -28,10 +32,17 @@ pub fn set_window(window: &winit::window::Window) {
     }
 }
 
+fn start_sending(sink: InputSink) {
+    let (keys, queue) = std::sync::mpsc::channel();
+    if KEYS.set(keys).is_ok() {
+        std::thread::spawn(move || queue.into_iter().for_each(|input| sink.send(input)));
+    }
+}
+
 #[cfg(windows)]
 pub fn install(sink: InputSink) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, SetWindowsHookExW, WH_KEYBOARD_LL};
-    let _ = SINK.set(sink);
+    start_sending(sink);
     std::thread::spawn(|| unsafe {
         let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), std::ptr::null_mut(), 0);
         if hook.is_null() {
@@ -45,7 +56,7 @@ pub fn install(sink: InputSink) {
 
 #[cfg(not(windows))]
 pub fn install(sink: InputSink) {
-    let _ = SINK.set(sink);
+    start_sending(sink);
 }
 
 #[cfg(windows)]
@@ -62,10 +73,10 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: usize, lparam: isize)
                 VK_RWIN => Some(KEY_RIGHTMETA),
                 _ => None,
             };
-            if let (Some(evdev), Some(sink)) = (evdev, SINK.get()) {
+            if let (Some(evdev), Some(keys)) = (evdev, KEYS.get()) {
                 let pressed = matches!(wparam as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
                 if pressed || matches!(wparam as u32, WM_KEYUP | WM_SYSKEYUP) {
-                    sink.send(Input::Key { code: evdev, pressed });
+                    let _ = keys.send(Input::Key { code: evdev, pressed });
                     return 1;
                 }
             }
