@@ -2,7 +2,7 @@
 name = "tuxbridge"
 version = "0.1.0"
 description = "Linux on Windows, made easy"
-authors = ["ItsOverk1ll"]
+authors = ["Rookery Software"]
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

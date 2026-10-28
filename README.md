@@ -2,7 +2,7 @@
 
 Linux on Windows, made easy: a Windows app that installs and runs Linux systems (through WSL)
 for people who have never used Linux or a command line. Each system can get a full Linux
-desktop, Hyprland, with one checkbox. Its mascot is Pip, the little penguin who lives in your Linux system and bridges you to the Linux side. TuxBridge was called EasyWSL (and, briefly, Pengi) until 2026-10-28.
+desktop, Hyprland, with one checkbox. Its mascot is Pip, the little penguin who lives in your Linux system and bridges you to the Linux side.
 
 Status: **pre-release** (see [docs/roadmap.md](docs/roadmap.md)).
 

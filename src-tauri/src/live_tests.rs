@@ -96,12 +96,12 @@ async fn updates_a_container() {
     assert!(leftovers.is_empty());
 }
 
-/// Installs the assistant into P:\WSL\easywsl-ai-test (Ollama 1.6 GB and the standard model),
+/// Installs the assistant into %TEMP%\tuxbridge-ai-test, or TUXBRIDGE_AI_TEST_DIR (Ollama 1.6 GB and the standard model),
 /// asks it something, and leaves it there for the next tests. EASYWSL_AI_MODEL picks the size.
 #[tokio::test]
 #[ignore]
 async fn installs_the_assistant_and_asks_it() {
-    let dir = std::path::PathBuf::from(r"P:\WSL\easywsl-ai-test");
+    let dir = ai_test_dir();
     let id = std::env::var("EASYWSL_AI_MODEL").unwrap_or("standard".into());
     let model = crate::ai::MODELS.iter().find(|m| m.id == id).unwrap();
     let job = crate::jobs::Job::detached("assistant");
@@ -128,7 +128,7 @@ async fn installs_the_assistant_and_asks_it() {
 #[tokio::test]
 #[ignore]
 async fn assistant_answers_quickly() {
-    let dir = std::path::PathBuf::from(r"P:\WSL\easywsl-ai-test");
+    let dir = ai_test_dir();
     let id = std::env::var("EASYWSL_AI_MODEL").unwrap_or("standard".into());
     let model = crate::ai::MODELS.iter().find(|m| m.id == id).unwrap();
     crate::ai::stop();
@@ -143,4 +143,9 @@ async fn assistant_answers_quickly() {
     let a = crate::ai::answer_for_test(&dir, model.tag, &q).await.unwrap();
     println!("answer: {:?}\n{a}", t.elapsed());
     crate::ai::stop();
+}
+
+/// Where the assistant's live tests install it: TUXBRIDGE_AI_TEST_DIR, or a folder in %TEMP%.
+fn ai_test_dir() -> std::path::PathBuf {
+    std::env::var_os("TUXBRIDGE_AI_TEST_DIR").map(std::path::PathBuf::from).unwrap_or_else(|| std::env::temp_dir().join("tuxbridge-ai-test"))
 }

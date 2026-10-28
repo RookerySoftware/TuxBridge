@@ -1,7 +1,7 @@
 # Roadmap
 
 TuxBridge: Linux on Windows with as little friction and foreknowledge as possible, for people
-who have never used WSL, Linux or a command line. Called TuxBridge since 2026-10-28 (formerly EasyWSL, briefly Pengi). Free, to be open-sourced once finalized.
+who have never used WSL, Linux or a command line. Free, by Rookery Software, to be open-sourced once finalized.
 
 ## Phase 1: the app and WSL (done)
 

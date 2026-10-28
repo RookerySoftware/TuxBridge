@@ -2,13 +2,13 @@
 # a hyprland-wsl checkout. TuxBridge bundles that copy and runs it inside the distros: the account
 # setup, the Hyprland installer, the launcher, Omarchy's installer.
 #
-#   .\scripts\sync-engine.ps1                                   # pre-release-0.1.0 of P:\hyprland-wsl-experiment
+#   .\scripts\sync-engine.ps1                                   # pre-release-0.1.0 of ..\hyprland-wsl (or $env:HYPRLAND_WSL_REPO)
 #   .\scripts\sync-engine.ps1 -Repo C:\src\hyprland-wsl -Ref v0.1.0
 #
 # The ref and its commit are written to src-tauri/engine/VERSION. Commit the result.
 
 param(
-    [string] $Repo = 'P:\hyprland-wsl-experiment',
+    [string] $Repo = $(if ($env:HYPRLAND_WSL_REPO) { $env:HYPRLAND_WSL_REPO } else { Join-Path $PSScriptRoot '..\..\hyprland-wsl' }),
     [string] $Ref = 'pre-release-0.1.0'
 )
 
