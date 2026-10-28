@@ -26,3 +26,15 @@ dist-ssr
 # Built by scripts/build-display.ps1
 /src-tauri/bin/
 /src-tauri/linux/easywsl-agent
+
+# An installed copy of TuxBridge must never be committed (if the installer ever targets this folder).
+/tuxbridge.exe
+/uninstall.exe
+/bin/
+/engine/
+/linux/
+/skill/
+/assistant/
+/LICENSE.txt
+/NOTICE.txt
+
