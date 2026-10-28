@@ -45,7 +45,7 @@ Debian names releases after Toy Story characters: 12 is *bookworm*, 13 *trixie*,
 
 | Branch | Is |
 | --- | --- |
-| **stable** | The current release: what Pengi installs. Security fixes only. |
+| **stable** | The current release: what TuxBridge installs. Security fixes only. |
 | **testing** | The next release, being prepared: newer, occasionally broken. |
 | **unstable** (*sid*) | Where new packages arrive first. |
 
@@ -85,7 +85,7 @@ the [Ubuntu guide](ubuntu.md)), a language's own installer (rustup, uv, nvm), or
 
 ## The desktop: Xfce
 
-Pengi gives Debian the light, quick Xfce desktop. Full guide: [The Xfce desktop](xfce.md).
+TuxBridge gives Debian the light, quick Xfce desktop. Full guide: [The Xfce desktop](xfce.md).
 
 ## Upgrading to the next release
 
@@ -114,7 +114,7 @@ beside the old one with **Get Linux** is the safe alternative.
 
 | Problem | Fix |
 | --- | --- |
-| `sudo: command not found` | Systems made by Pengi have sudo. Otherwise, from PowerShell: `wsl -d <system> -u root apt install sudo`, then `usermod -aG sudo <you>`. |
+| `sudo: command not found` | Systems made by TuxBridge have sudo. Otherwise, from PowerShell: `wsl -d <system> -u root apt install sudo`, then `usermod -aG sudo <you>`. |
 | `<you> is not in the sudoers file` | `wsl -d <system> -u root usermod -aG sudo <you>`, then restart the system. |
 | A program is older than you need | Backports, Flatpak, the language's own installer, or Docker. |
 | `Package has no installation candidate` | It may need `contrib`/`non-free` (above), or doesn't exist in your release. |

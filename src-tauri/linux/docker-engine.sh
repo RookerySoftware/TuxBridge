@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pengi's Docker engine: the free Docker Engine in a small Alpine Linux system of its own
+# TuxBridge's Docker engine: the free Docker Engine in a small Alpine Linux system of its own
 # (easywsl-docker), which nothing else runs in. Run as root inside it:
 #
 #   docker-engine.sh setup CERTS     installs Docker Engine and this script (as easywsl-docker),
@@ -9,7 +9,7 @@
 #   easywsl-docker stop              stops it
 #
 # The engine listens on its Unix socket and on 127.0.0.1:2376, which WSL forwards to Windows'
-# localhost. That port takes only clients with a certificate from Pengi's own authority, kept
+# localhost. That port takes only clients with a certificate from TuxBridge's own authority, kept
 # in the Windows user's profile: other users and programs on the PC cannot use the engine.
 
 set -eu

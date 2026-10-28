@@ -15,13 +15,13 @@ tested on 2026-10-26 (Docker Engine 29.9.2, Alpine 3.24, WSL 2.6).
 - **Running.** The app starts `wsl.exe -d easywsl-docker -e easywsl-docker run` as a detached
   process (out of the app's job object), so Docker keeps running when the app closes; that
   wsl.exe also keeps WSL from stopping the system as idle. `easywsl-docker stop` stops dockerd,
-  which stops the containers first. "Start Docker when Pengi opens" (Settings, on by default)
+  which stops the containers first. "Start Docker when TuxBridge opens" (Settings, on by default)
   starts it again after Windows restarts.
 - **Reaching it from Windows.** dockerd listens on its Unix socket and on `127.0.0.1:2376`,
   which WSL forwards to Windows' localhost. That port requires TLS client certificates
   (`--tlsverify`): when Docker is turned on, the app makes a certificate authority with rcgen,
   signs a server certificate (localhost, 127.0.0.1) and a client certificate, and throws the
-  authority's key away. The client's files stay in `%LOCALAPPDATA%\Pengi\docker\tls`, readable
+  authority's key away. The client's files stay in `%LOCALAPPDATA%\TuxBridge\docker\tls`, readable
   by this Windows account only, so other accounts and programs without them cannot use the
   engine (which amounts to root on it). A plain request is refused ("Client sent an HTTP
   request to an HTTPS server").
@@ -32,7 +32,7 @@ tested on 2026-10-26 (Docker Engine 29.9.2, Alpine 3.24, WSL 2.6).
 
 - `docker.exe` is the static Windows build from download.docker.com (the newest in its
   listing; unsigned, so HTTPS from Docker's server is the trust, and the log records its
-  SHA-256), unpacked with Windows' own `tar.exe` into `%LOCALAPPDATA%\Pengi\bin`, which is
+  SHA-256), unpacked with Windows' own `tar.exe` into `%LOCALAPPDATA%\TuxBridge\bin`, which is
   added to the user's PATH (HKCU, with a WM_SETTINGCHANGE broadcast) unless Docker Desktop is
   installed.
 - Docker Compose v2 is put in `%USERPROFILE%\.docker\cli-plugins` unless one is there already
@@ -40,7 +40,7 @@ tested on 2026-10-26 (Docker Engine 29.9.2, Alpine 3.24, WSL 2.6).
 - A context named `easywsl` holds the address and certificates; it becomes the current context
   unless Docker Desktop is installed (then `docker context use easywsl` switches).
 - The app's own calls pass the address and certificates on the command line and use
-  `%LOCALAPPDATA%\Pengi\docker\config` as `DOCKER_CONFIG`, so the user's settings (a
+  `%LOCALAPPDATA%\TuxBridge\docker\config` as `DOCKER_CONFIG`, so the user's settings (a
   credential helper of an uninstalled Docker Desktop, say) cannot break them.
 
 ## In the user's Linux systems
@@ -62,7 +62,7 @@ step here.
 
 ## Containers
 
-`docker ps -a --format '{{json .}}'` on Pengi's engine and, when its pipe
+`docker ps -a --format '{{json .}}'` on TuxBridge's engine and, when its pipe
 (`\\.\pipe\dockerDesktopLinuxEngine`) exists, on Docker Desktop's. Start, stop, restart,
 remove (`rm -f`: named volumes stay), the last 400 lines of the log, and "Open" for published
 TCP ports. "Disk use and clean-up" shows `docker system df` and runs `docker system prune -f`

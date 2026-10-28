@@ -3,7 +3,7 @@
 How a distro's own desktop runs under WSL and shows on Windows, and what was tried for the
 ones that do not run yet.
 
-## How every desktop is shown: Pengi's own viewer and agent
+## How every desktop is shown: TuxBridge's own viewer and agent
 
 No VNC and no ports. `display/viewer` (Rust, on Windows) is a native window that starts the
 session through wsl.exe; `display/agent` (`easywsl-agent`, Rust, in Linux) runs next to the

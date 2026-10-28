@@ -43,7 +43,7 @@ struct Manifest {
 /// Downloads the image's layers into `dir` as layer01.tar.gz, layer02.tar.gz, ... and returns
 /// their paths. `progress` gets (bytes so far, total bytes).
 pub async fn download(image: &str, dir: &Path, mut progress: impl FnMut(u64, u64)) -> anyhow::Result<Vec<PathBuf>> {
-    let client = reqwest::Client::builder().user_agent("Pengi").build()?;
+    let client = reqwest::Client::builder().user_agent("TuxBridge").build()?;
     let token: Token = client
         .get(format!("https://auth.docker.io/token?service=registry.docker.io&scope=repository:{image}:pull"))
         .send()

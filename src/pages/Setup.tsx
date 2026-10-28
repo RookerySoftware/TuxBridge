@@ -21,7 +21,7 @@ function screenFor(r: Readiness): Screen {
         body: (
           <p>
             Linux on Windows needs Windows 10 version 21H2 or newer, and this PC has an older version (build {r.build}). Open{" "}
-            <b>Settings → Windows Update</b>, install what it offers, restart, and open Pengi again.
+            <b>Settings → Windows Update</b>, install what it offers, restart, and open TuxBridge again.
           </p>
         ),
         action: { label: "Check again" },
@@ -33,7 +33,7 @@ function screenFor(r: Readiness): Screen {
         body: (
           <p>
             This Windows 10 needs its updates from November 2022 or later to run Linux. Open <b>Settings → Update & Security →
-            Windows Update</b>, install everything it offers, restart, and open Pengi again.
+            Windows Update</b>, install everything it offers, restart, and open TuxBridge again.
           </p>
         ),
         action: { label: "Check again" },
@@ -77,7 +77,7 @@ function screenFor(r: Readiness): Screen {
         body: (
           <>
             <p>
-              Windows runs Linux through a part called WSL (Windows Subsystem for Linux). It comes from Microsoft and is free. Pengi
+              Windows runs Linux through a part called WSL (Windows Subsystem for Linux). It comes from Microsoft and is free. TuxBridge
               downloads and installs it for you.
             </p>
             <p>Windows will ask for permission: choose <b>Yes</b>.</p>
@@ -92,7 +92,7 @@ function screenFor(r: Readiness): Screen {
         body: (
           <>
             <p>
-              WSL is installed, but two parts of Windows it needs are switched off. Pengi switches them on; after that, Windows needs
+              WSL is installed, but two parts of Windows it needs are switched off. TuxBridge switches them on; after that, Windows needs
               one restart.
             </p>
             <p>Windows will ask for permission: choose <b>Yes</b>.</p>
@@ -104,7 +104,7 @@ function screenFor(r: Readiness): Screen {
       return {
         icon: <RotateCcw className="size-6" />,
         title: "Restart your PC to finish",
-        body: <p>Windows needs a restart to finish setting up Linux support. Save your work, restart, and open Pengi again.</p>,
+        body: <p>Windows needs a restart to finish setting up Linux support. Save your work, restart, and open TuxBridge again.</p>,
       };
     case "ready":
       return { icon: null, title: "", body: null };

@@ -1,4 +1,4 @@
-//! The Linux systems Pengi offers, described for people who have never used Linux.
+//! The Linux systems TuxBridge offers, described for people who have never used Linux.
 
 use serde::Serialize;
 

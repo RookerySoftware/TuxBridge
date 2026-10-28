@@ -10,7 +10,7 @@ import { api, type Distro } from "../api";
 import { useCompanionOn, useKidsMode } from "../prefs";
 import Penguin, { type Mood } from "./Penguin";
 import {
-  appTour, explanations, funFacts, kidsFacts, kidsLessons, pageTips, systemTour,
+  appTour, explanations, funFacts, kidsFacts, whispers, kidsLessons, pageTips, systemTour,
   type Action, type Bubble, type KidsLesson, type Page, type TourStep,
 } from "./content";
 import {
@@ -200,7 +200,8 @@ export default function Companion({ page, distros, onGo, onHelp }: {
 
   const another = () => {
     const roll = Math.random();
-    if (roll < 0.25 && suggestion) say(suggestion);
+    if (roll < 0.08 && !kids) say({ title: "Psst…", text: pick(whispers), mood: "think" });
+    else if (roll < 0.3 && suggestion) say(suggestion);
     else if (roll < 0.55) say({ title: kids ? "Pip says" : "Tip", text: pick(pageTips[page][kids ? "kids" : "normal"]) });
     else say({ title: "Fun fact", text: pick(kids ? [...kidsFacts, ...kidsFacts, ...funFacts.slice(0, 3)] : funFacts), mood: "wow" });
   };

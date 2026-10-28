@@ -8,7 +8,7 @@ order: 24
 # The Xfce desktop
 
 Xfce is a light, quick, traditional desktop: menus, panels, windows with buttons. It uses little
-memory, so it starts fast and stays responsive. It is the desktop Pengi gives Debian.
+memory, so it starts fast and stays responsive. It is the desktop TuxBridge gives Debian.
 
 ## The panels and the menu
 
@@ -65,5 +65,5 @@ More themes: `sudo apt install arc-theme papirus-icon-theme`, then pick them in 
 - Panel gone: run `xfce4-panel &` in a terminal.
 - Everything back to default (files stay): close the desktop window, then in a terminal
   `mv ~/.config/xfce4 ~/.config/xfce4.old`, and open the desktop again.
-- Keyboard shortcut doesn't work: Pengi's window passes most keys to Linux, but Windows keeps
+- Keyboard shortcut doesn't work: TuxBridge's window passes most keys to Linux, but Windows keeps
   Ctrl+Alt+Del and Win+L.

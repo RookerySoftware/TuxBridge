@@ -79,7 +79,7 @@ struct Args {
 }
 
 fn parse_args() -> Result<Args, String> {
-    let mut args = Args { fullscreen: false, title: "EasyWSL".into(), size: (1600, 900), command: Vec::new() };
+    let mut args = Args { fullscreen: false, title: "TuxBridge".into(), size: (1600, 900), command: Vec::new() };
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -248,6 +248,14 @@ impl ApplicationHandler<Message> for App {
             .with_inner_size(PhysicalSize::new(self.args.size.0, self.args.size.1));
         if self.args.fullscreen {
             attributes = attributes.with_fullscreen(Some(Fullscreen::Borderless(None)));
+        }
+        // Pip, from the icon build.rs puts in the exe, on the title bar and the taskbar.
+        #[cfg(windows)]
+        {
+            use winit::platform::windows::{IconExtWindows, WindowAttributesExtWindows};
+            if let Ok(icon) = winit::window::Icon::from_resource(1, None) {
+                attributes = attributes.with_window_icon(Some(icon.clone())).with_taskbar_icon(Some(icon));
+            }
         }
         let window = Rc::new(event_loop.create_window(attributes).expect("window"));
         let context = softbuffer::Context::new(window.clone()).expect("drawing context");

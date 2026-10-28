@@ -1,4 +1,4 @@
-// Settings → AI apps you already use: the Pengi skill for Claude Code, Codex and claude.ai.
+// Settings → AI apps you already use: the TuxBridge skill for Claude Code, Codex and claude.ai.
 
 import { useEffect, useState } from "react";
 import { Check, Download, Plus, Trash2 } from "lucide-react";
@@ -32,9 +32,9 @@ export default function SkillSettings() {
       <div className="space-y-1">
         <h2 className="font-display font-semibold">AI apps you already use</h2>
         <p className="text-sm text-muted">
-          With Claude or ChatGPT you can skip the local assistant: add Pengi's skill to your AI app, and it learns how Pengi works,
-          reads its guides, and can check your systems, logs and Docker for you. Ask it about Pengi, or call the skill by name
-          (/pengi in Claude Code, $pengi in Codex).
+          With Claude or ChatGPT you can skip the local assistant: add TuxBridge's skill to your AI app, and it learns how TuxBridge works,
+          reads its guides, and can check your systems, logs and Docker for you. Ask it about TuxBridge, or call the skill by name
+          (/tuxbridge in Claude Code, $tuxbridge in Codex).
         </p>
       </div>
       <div className="divide-y divide-line rounded-xl border border-line">
@@ -46,7 +46,7 @@ export default function SkillSettings() {
                 {t.installed ? <Badge tone="good">Added</Badge> : !t.detected && <Badge>Not found on this PC</Badge>}
               </div>
               <div className="truncate text-xs text-muted" title={t.path}>
-                {t.installed ? `In ${t.path}. Kept up to date with Pengi.` : `Goes to ${t.path}`}
+                {t.installed ? `In ${t.path}. Kept up to date with TuxBridge.` : `Goes to ${t.path}`}
               </div>
             </div>
             {t.installed ? (
@@ -79,7 +79,7 @@ export default function SkillSettings() {
         </div>
       </div>
       {error && <Notice tone="bad">{error}</Notice>}
-      <p className="text-xs text-muted">The AI app runs commands only as you allow it there. Pengi sends nothing to it; the skill is a few text files.</p>
+      <p className="text-xs text-muted">The AI app runs commands only as you allow it there. TuxBridge sends nothing to it; the skill is a few text files.</p>
     </Card>
   );
 }

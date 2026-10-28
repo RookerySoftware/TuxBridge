@@ -1,6 +1,6 @@
 // The tray menu: the small window that opens when you right-click Pip in the notification area.
 // Recent systems (left click opens the desktop, or the terminal when there's none; right click
-// offers more), then Open Pengi, Settings and Quit. It fits its window to what it shows.
+// offers more), then Open TuxBridge, Settings and Quit. It fits its window to what it shows.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LayoutDashboard, Monitor, Power, Settings as SettingsIcon, SquareTerminal, X } from "lucide-react";
@@ -68,7 +68,7 @@ export default function TrayMenu() {
     <div ref={panel} className="m-px overflow-hidden rounded-xl border border-line bg-surface text-sm text-ink shadow-xl">
       <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
         <Penguin size={26} />
-        <span className="flex-1 font-display font-semibold">Pengi</span>
+        <span className="flex-1 font-display font-semibold">TuxBridge</span>
         <button aria-label="Close" className="rounded p-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => api.trayHide()}>
           <X className="size-3.5" />
         </button>
@@ -130,13 +130,13 @@ export default function TrayMenu() {
 
       <div className="border-t border-line px-1.5 py-1.5">
         <Item icon={<Penguin size={16} />} onClick={() => api.showWindow()}>
-          Open Pengi
+          Open TuxBridge
         </Item>
         <Item icon={<SettingsIcon className="size-4" />} onClick={() => api.showWindow("settings")}>
           Settings
         </Item>
         <Item icon={<Power className="size-4" />} onClick={() => api.quit()}>
-          Quit Pengi
+          Quit TuxBridge
         </Item>
       </div>
     </div>

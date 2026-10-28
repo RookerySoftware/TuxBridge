@@ -1,6 +1,6 @@
 ---
 title: Glossary
-summary: Linux, WSL and Pengi words explained in plain language, A to Z.
+summary: Linux, WSL and TuxBridge words explained in plain language, A to Z.
 section: Reference
 order: 82
 ---
@@ -40,7 +40,7 @@ See [Docker](docker.md).
 **Distribution (distro)** — one version of Linux: Ubuntu, Mint, Arch… They share the kernel and
 most programs.
 
-**Docker** — a tool to run containers. Pengi can set up Docker's engine for you.
+**Docker** — a tool to run containers. TuxBridge can set up Docker's engine for you.
 
 **Dotfile** — a hidden settings file whose name starts with a dot (`.bashrc`).
 

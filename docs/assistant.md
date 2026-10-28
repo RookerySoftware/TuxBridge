@@ -1,12 +1,12 @@
 # The assistant
 
-An optional AI on the PC that answers questions about Pengi, Linux, WSL, Windows and Docker
-(the **Assistant** page), and an Pengi skill for people who use Claude or Codex instead
+An optional AI on the PC that answers questions about TuxBridge, Linux, WSL, Windows and Docker
+(the **Assistant** page), and a TuxBridge skill for people who use Claude or Codex instead
 (Settings → AI apps you already use).
 
 ## Running the model (src-tauri/src/ai.rs)
 
-- **Ollama**, Pengi's own copy: the official `ollama-windows-amd64.zip` from Ollama's newest
+- **Ollama**, TuxBridge's own copy: the official `ollama-windows-amd64.zip` from Ollama's newest
   GitHub release (1.6 GB, with CUDA; its SHA-256 is checked against the release's
   `sha256sum.txt`), unpacked with Windows' `tar` into `<systems folder>\easywsl-ai\ollama`.
   Models go to `easywsl-ai\models`. It is apart from any Ollama the person installed.
@@ -23,11 +23,11 @@ An optional AI on the PC that answers questions about Pengi, Linux, WSL, Windows
   Defender checks the new files once); after that, starting the server and loading the model
   takes about 8 s, and typical answers 3 to 15 s.
 
-## What makes it know Pengi (src/assistant)
+## What makes it know TuxBridge (src/assistant)
 
 Every question is sent with instructions built in the window (`context.ts`):
 
-1. `knowledge.md`: what Pengi is, every page and button, common tasks with the simplest way
+1. `knowledge.md`: what TuxBridge is, every page and button, common tasks with the simplest way
    to do them, facts that are easy to get wrong (folder sharing with Docker, clipboard), and
    how to answer (one way, commands marked bash or PowerShell, warnings only for destructive
    things, never invent features).
@@ -43,9 +43,9 @@ without building the app.
 
 ## The skill (src-tauri/src/skills.rs, src-tauri/skill/SKILL.md)
 
-A folder with `SKILL.md` (when to use it, how Pengi is built, read-only commands to look at
+A folder with `SKILL.md` (when to use it, how TuxBridge is built, read-only commands to look at
 the PC, what to ask before doing) and `references/` (the guides and the app part of
-`knowledge.md`). Installed to `~/.claude/skills/pengi` (Claude Code) and
-`~/.agents/skills/pengi` (Codex), or saved as `pengi-skill.zip` in Downloads for claude.ai
-and Claude Desktop. Pengi rewrites installed copies when it starts, and never touches a
+`knowledge.md`). Installed to `~/.claude/skills/tuxbridge` (Claude Code) and
+`~/.agents/skills/tuxbridge` (Codex), or saved as `tuxbridge-skill.zip` in Downloads for claude.ai
+and Claude Desktop. TuxBridge rewrites installed copies when it starts, and never touches a
 folder named easywsl that it did not write (SKILL.md carries a mark).

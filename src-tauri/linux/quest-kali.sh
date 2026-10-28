@@ -3,7 +3,7 @@
 # a security analyst uses every day - reading logs, decoding data, checking file integrity, and
 # spotting suspicious patterns - all on harmless practice files in ~/security-quest. Nothing here
 # touches any real system or network: it is a reading-and-reasoning exercise, like a puzzle.
-# Flags look like CTF{...}; the learner types each into Pengi's Learn page. Running it again
+# Flags look like CTF{...}; the learner types each into TuxBridge's Learn page. Running it again
 # starts the quest over.
 #
 # The flags are checked by the app against their SHA-256; keep src/learn/quests.ts in step.
@@ -21,7 +21,7 @@ You are a junior analyst. A folder of harmless practice "evidence" is in front
 of you. Work through it to learn the everyday skills of reading data safely.
 None of this touches a real computer or network - it is all make-believe files.
 
-Every challenge hides a flag like CTF{something}. Type each into Pengi's Learn
+Every challenge hides a flag like CTF{something}. Type each into TuxBridge's Learn
 page. Hints are there for every one.
 
 GOLDEN RULE, printed on every analyst's wall:

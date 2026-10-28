@@ -51,7 +51,7 @@ async fn downloads_a_distro_image() {
     println!("{layers:?}");
 }
 
-/// Needs Pengi's Docker engine running. Points nginx:alpine at an older nginx, starts a
+/// Needs TuxBridge's Docker engine running. Points nginx:alpine at an older nginx, starts a
 /// container from it, then updates it to the real nginx:alpine.
 #[tokio::test]
 #[ignore]

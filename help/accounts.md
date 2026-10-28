@@ -7,7 +7,7 @@ order: 13
 
 # Your account, sudo and passwords
 
-When you installed the system, Pengi made a Linux account with the name and password you
+When you installed the system, TuxBridge made a Linux account with the name and password you
 chose. It is separate from your Windows account: the password is only for this system.
 
 ## sudo
@@ -50,7 +50,7 @@ su - anna                                            # become anna in this termi
 sudo deluser --remove-home anna                      # remove (Arch: sudo userdel -r anna)
 ```
 
-The terminal from Pengi opens with the account you made when installing. To sign in as
+The terminal from TuxBridge opens with the account you made when installing. To sign in as
 someone else from PowerShell: `wsl -d <system> -u anna`. The default account is set in
 `/etc/wsl.conf` (see [Configuring WSL](wsl-config.md)).
 

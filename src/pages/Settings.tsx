@@ -1,11 +1,50 @@
 import { useEffect, useState } from "react";
-import { api, type Readiness, type Settings as SettingsData } from "../api";
+import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { api, inApp, type Readiness, type Settings as SettingsData } from "../api";
 import { Button, Card, Field, Toggle, inputClass } from "../components/ui";
 import AssistantSettings from "../components/AssistantSettings";
 import SkillSettings from "../components/SkillSettings";
 import Penguin from "../companion/Penguin";
 import { pointing, setPointing, startAppTour } from "../companion/store";
 import { useCompanionOn, useKidsMode } from "../prefs";
+
+function About({ readiness }: { readiness: Readiness }) {
+  const [version, setVersion] = useState("0.1.0");
+  useEffect(() => {
+    if (inApp) getVersion().then(setVersion).catch(() => {});
+  }, []);
+  const link = (url: string) => () => (inApp ? openUrl(url) : window.open(url));
+  return (
+    <Card className="space-y-4 p-5 text-sm">
+      <div className="flex items-center gap-4">
+        <Penguin size={56} mood="happy" />
+        <div>
+          <h2 className="font-display text-lg font-semibold">TuxBridge</h2>
+          <p className="text-muted">
+            Version {version} · pre-release · WSL {readiness.state === "ready" ? readiness.wslVersion : "not ready"}
+          </p>
+          <p className="text-muted">Made by Rookery Software. Pip carries everything across.</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={link("https://tuxbridge.com")}>Website</Button>
+        <Button onClick={link("https://rookerysoftware.app")}>Rookery Software</Button>
+      </div>
+      <div className="space-y-1 border-t border-line pt-3 text-xs text-muted">
+        <p>
+          Built with Tauri, React and Rust. The Hyprland desktop comes from hyprland-wsl; Docker Engine, Ollama and the Linux
+          systems are downloaded from their own projects.
+        </p>
+        <p>
+          Linux® is the registered trademark of Linus Torvalds. Windows and WSL are trademarks of Microsoft. The names of the
+          Linux systems belong to their projects; TuxBridge is independent and not affiliated with them.
+        </p>
+        <p>© 2026 Rookery Software. Pip is Rookery Software's own penguin.</p>
+      </div>
+    </Card>
+  );
+}
 
 function CompanionSettings() {
   const [on, setOn] = useCompanionOn();
@@ -130,8 +169,8 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
         <Toggle
           checked={settings.startDocker}
           onChange={(v) => save({ ...settings, startDocker: v })}
-          label="Start Docker when Pengi opens"
-          description="Docker keeps running after Pengi closes, until Windows restarts or you stop it on the Docker page."
+          label="Start Docker when TuxBridge opens"
+          description="Docker keeps running after TuxBridge closes, until Windows restarts or you stop it on the Docker page."
         />
       </Card>
 
@@ -140,12 +179,7 @@ export default function Settings({ readiness }: { readiness: Readiness }) {
       <AssistantSettings />
       <SkillSettings />
 
-      <Card className="space-y-1 p-5 text-sm text-muted">
-        <h2 className="mb-2 font-display font-semibold text-ink">About</h2>
-        <p>Pengi 0.1.0 (pre-release)</p>
-        <p>WSL {readiness.state === "ready" ? readiness.wslVersion : "not ready"}</p>
-        <p>The Hyprland desktop comes from hyprland-wsl.</p>
-      </Card>
+      <About readiness={readiness} />
       {saved && <p className="text-sm text-good">Saved.</p>}
     </div>
   );

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Linux Basics Quest: a practice course in ~/linux-quest that teaches the everyday terminal
 # skills (ls, cd, cat, grep, find, pipes, chmod, base64) by hiding a flag in each challenge.
-# Flags look like FLAG{...}; the learner types each into Pengi's Learn page. Needs only bash
+# Flags look like FLAG{...}; the learner types each into TuxBridge's Learn page. Needs only bash
 # and coreutils, so it runs on every system. Running it again starts the quest over.
 #
 # The flags are checked by the app against their SHA-256; keep src/learn/quests.ts in step.
@@ -17,7 +17,7 @@ cat > README.txt << 'EOF'
                        LINUX BASICS QUEST
 
 Each challenge hides a flag that looks like FLAG{something}. Type each flag
-into Pengi's Learn page to tick it off. Every challenge has a hint there if
+into TuxBridge's Learn page to tick it off. Every challenge has a hint there if
 you get stuck.
 
 Handy commands to start:

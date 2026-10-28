@@ -1,4 +1,4 @@
-// Pip, Pengi's penguin: original artwork drawn here (not Tux), so it belongs to the project and
+// Pip, TuxBridge's penguin: original artwork drawn here (not Tux), so it belongs to the project and
 // can be used anywhere the app goes. A round head with a feather tuft, or a graduation cap in Kids
 // mode, and a few moods.
 

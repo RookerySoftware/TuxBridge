@@ -1,4 +1,4 @@
-//! The app gallery: ready-made apps that run as Docker containers on Pengi's engine, each
+//! The app gallery: ready-made apps that run as Docker containers on TuxBridge's engine, each
 //! asking only what it needs. Installed by containers::install_app, with the container named
 //! after the app and labelled easywsl.app=<id>, its data in named volumes (easywsl-<id>-<name>)
 //! that removing the container keeps.

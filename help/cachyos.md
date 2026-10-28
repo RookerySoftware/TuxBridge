@@ -69,7 +69,7 @@ The repositories are listed in `/etc/pacman.conf`; leave their order as it is.
 
 ## The desktop
 
-CachyOS's own KDE Plasma needs a Wayland session this set-up cannot show yet, so Pengi offers
+CachyOS's own KDE Plasma needs a Wayland session this set-up cannot show yet, so TuxBridge offers
 the Hyprland desktop for it. See [The Hyprland desktop](hyprland.md).
 
 ## Shell

@@ -1,6 +1,6 @@
 ---
 title: Linux and WSL in five minutes
-summary: What Linux is, what WSL does, and what Pengi adds.
+summary: What Linux is, what WSL does, and what TuxBridge adds.
 section: Start here
 order: 1
 ---
@@ -18,7 +18,7 @@ Windows, in a small, fast virtual machine that starts in a second or two. Each s
 complete Linux with its own files and programs, kept apart from Windows, and you can have
 several.
 
-**Pengi** takes care of the parts that usually need a guide:
+**TuxBridge** takes care of the parts that usually need a guide:
 
 - checking that your PC is ready, and turning WSL on
 - installing a system with an account, and optionally a desktop

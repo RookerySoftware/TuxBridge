@@ -48,7 +48,7 @@ async fn system_fix(state: String) -> Result<system::Readiness, String> {
     system::fix(&state).await
 }
 
-/// Asks a running system Pengi did not make what it is: its kind (for the right title and
+/// Asks a running system TuxBridge did not make what it is: its kind (for the right title and
 /// colour), its user, whether it has hyprland-wsl's desktop. Only running ones are asked, since
 /// asking would start a stopped one.
 async fn probe(app: AppHandle, name: String) {
@@ -224,7 +224,7 @@ fn add_desktop(app: AppHandle, name: String, kind: desktop::Kind, main_key: Stri
     let (title, estimate) = match (kind, &own) {
         (desktop::Kind::Hyprland, _) => ("Installing the Hyprland desktop".to_string(), "2 to 5 minutes".to_string()),
         (desktop::Kind::Own, Some(d)) => (format!("Installing the {} desktop", d.name), format!("{} minutes", d.minutes)),
-        (desktop::Kind::Own, None) => return Err(format!("{name} has no desktop of its own that Pengi can install.")),
+        (desktop::Kind::Own, None) => return Err(format!("{name} has no desktop of its own that TuxBridge can install.")),
     };
     let job = Job::new(&app, "desktop", &name, &format!("Adding a desktop to {name}")).map_err(|e| e.to_string())?;
     let id = job.id();
@@ -234,7 +234,7 @@ fn add_desktop(app: AppHandle, name: String, kind: desktop::Kind, main_key: Stri
             job.step("Finding your account");
             let user = match info.user {
                 Some(u) => u,
-                // A distro Pengi did not make: its default user.
+                // A distro TuxBridge did not make: its default user.
                 None => wsl::output(["-d", &name, "-e", "id", "-un"])
                     .await
                     .map(|o| o.text.trim().to_string())
@@ -327,7 +327,7 @@ async fn update_system(app: AppHandle, name: String) -> Result<Option<u64>, Stri
             terminal(&name, Some(r#"export PATH="$HOME/.local/share/omarchy/bin:$PATH"; omarchy-update"#))?;
             return Ok(None);
         }
-        "none" => return Err(format!("Pengi does not know how to update {name}: it has none of the usual package managers.")),
+        "none" => return Err(format!("TuxBridge does not know how to update {name}: it has none of the usual package managers.")),
         _ if check.code != 0 => return Err(format!("{name} did not answer. Try again, or restart WSL.")),
         _ => {}
     }
@@ -563,7 +563,7 @@ async fn docker_clean_up(app: AppHandle, images: bool) -> Result<String, String>
     result
 }
 
-/// Makes `docker` in a distro use Pengi's engine.
+/// Makes `docker` in a distro use TuxBridge's engine.
 #[tauri::command]
 fn docker_use_in(app: AppHandle, name: String) -> Result<u64, String> {
     if app.state::<Jobs>().busy(&name) {
@@ -732,7 +732,7 @@ const TRAY_WIDTH: f64 = 290.0;
 #[derive(Default)]
 struct TrayAnchor(std::sync::Mutex<Option<tauri::PhysicalPosition<f64>>>);
 
-/// Pip in the notification area. A left click opens the window; a right click opens Pengi's own
+/// Pip in the notification area. A left click opens the window; a right click opens TuxBridge's own
 /// tray menu (a small window, src/tray/TrayMenu.tsx), because a native menu can't tell a left
 /// click on an item from a right one: recent systems open their desktop on a left click and offer
 /// more on a right click.
@@ -740,7 +740,7 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
     tauri::WebviewWindowBuilder::new(app, "tray", tauri::WebviewUrl::App("index.html".into()))
         .initialization_script("window.__EASYWSL_TRAY__ = true;")
-        .title("Pengi")
+        .title("TuxBridge")
         .inner_size(TRAY_WIDTH, 300.0)
         .decorations(false)
         .transparent(true)
@@ -751,7 +751,7 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
         .visible(false)
         .build()?;
 
-    let mut builder = TrayIconBuilder::with_id("main").tooltip("Pengi").on_tray_icon_event(|tray, event| {
+    let mut builder = TrayIconBuilder::with_id("main").tooltip("TuxBridge").on_tray_icon_event(|tray, event| {
         if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, .. } = event {
             let app = tray.app_handle();
             match button {
@@ -820,8 +820,8 @@ fn quit_app(app: AppHandle) {
 }
 
 /// What the window remembers (Pip, Learn's progress, recent systems: its localStorage) is kept by
-/// WebView2 under the app's id, which changed with the name EasyWSL -> Pengi. Copied once, before
-/// the window opens; caches are left behind.
+/// WebView2 under the app's id, which changed with each name (EasyWSL, Pengi, TuxBridge). Copied
+/// once from the newest earlier one, before the window opens; caches are left behind.
 fn migrate_window_data() {
     fn copy(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
         std::fs::create_dir_all(to)?;
@@ -840,10 +840,13 @@ fn migrate_window_data() {
         Ok(())
     }
     let Some(local) = dirs::data_local_dir() else { return };
-    let old = local.join("com.itsoverk1ll.easywsl").join("EBWebView");
-    let new = local.join("com.itsoverk1ll.pengi").join("EBWebView");
-    if old.exists() && !new.exists() {
-        let _ = copy(&old, &new);
+    let new = local.join("app.rookerysoftware.tuxbridge").join("EBWebView");
+    if new.exists() {
+        return;
+    }
+    let earlier = ["com.itsoverk1ll.pengi", "com.itsoverk1ll.easywsl"].map(|id| local.join(id).join("EBWebView"));
+    if let Some(old) = earlier.iter().find(|d| d.exists()) {
+        let _ = copy(old, &new);
     }
 }
 
@@ -851,10 +854,10 @@ fn migrate_window_data() {
 pub fn run() {
     migrate_window_data();
     tauri::Builder::default()
-        // Opening Pengi again while it sits in the tray shows the window it already has.
+        // Opening TuxBridge again while it sits in the tray shows the window it already has.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_opener::init())
-        // Closing the window keeps Pengi in the tray (desktops, installs and Docker keep going);
+        // Closing the window keeps TuxBridge in the tray (desktops, installs and Docker keep going);
         // Quit in the tray's menu ends it.
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
@@ -883,7 +886,7 @@ pub fn run() {
                     }
                 }
             });
-            // Installed Pengi skills follow the app's version.
+            // Installed TuxBridge skills follow the app's version.
             let handle = app.handle().clone();
             std::thread::spawn(move || skills::refresh(&handle));
             Ok(())
@@ -946,5 +949,5 @@ pub fn run() {
             quit_app,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Pengi");
+        .expect("error while running TuxBridge");
 }

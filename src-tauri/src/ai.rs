@@ -1,14 +1,14 @@
-//! The assistant: a language model that runs on this PC, for questions about Pengi, Linux,
+//! The assistant: a language model that runs on this PC, for questions about TuxBridge, Linux,
 //! WSL, Windows and Docker.
 //!
-//! It runs on Ollama, Pengi's own copy (the official Windows build from Ollama's releases)
+//! It runs on Ollama, TuxBridge's own copy (the official Windows build from Ollama's releases)
 //! in the assistant's folder next to the systems, apart from any Ollama the person installed:
 //! its own port (127.0.0.1:11435, this PC only), its own models folder. The server starts
 //! when the assistant is first asked something and ends with the app (a Windows job object
 //! ends it even when the app does not close cleanly). Nothing leaves the PC once the model
 //! is downloaded.
 //!
-//! What makes it know Pengi is the conversation the window sends (src/assistant): the guides
+//! What makes it know TuxBridge is the conversation the window sends (src/assistant): the guides
 //! that match the question, a description of the app, and what is on this PC right now.
 
 use std::collections::HashMap;
@@ -113,7 +113,7 @@ async fn recommend() -> (String, String) {
 }
 
 fn client() -> reqwest::Client {
-    reqwest::Client::builder().user_agent("Pengi").build().unwrap_or_default()
+    reqwest::Client::builder().user_agent("TuxBridge").build().unwrap_or_default()
 }
 
 async fn answering() -> bool {

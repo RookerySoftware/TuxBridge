@@ -91,7 +91,7 @@ impl Job {
         std::fs::create_dir_all(paths::logs_dir())?;
         let log_path = paths::logs_dir().join(format!("{kind}-{distro}-{}.log", now()));
         let mut file = std::fs::File::create(&log_path)?;
-        writeln!(file, "Pengi {} {kind} {distro}", env!("CARGO_PKG_VERSION"))?;
+        writeln!(file, "TuxBridge {} {kind} {distro}", env!("CARGO_PKG_VERSION"))?;
         let view = Arc::new(Mutex::new(JobView {
             id,
             kind: kind.into(),

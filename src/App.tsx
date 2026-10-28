@@ -53,7 +53,7 @@ function Main({ readiness }: { readiness: Readiness }) {
       <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-surface/60 px-3 py-4">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <Penguin size={32} />
-          <span className="font-display text-base font-semibold">Pengi</span>
+          <span className="font-display text-base font-semibold">TuxBridge</span>
         </div>
         <nav className="space-y-0.5">
           {nav.map((n) => (

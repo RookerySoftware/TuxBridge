@@ -122,7 +122,7 @@ sudo localectl set-locale LANG=en_US.UTF-8
 
 ## Hyprland
 
-Arch has the newest Hyprland, and Pengi can add it to an Arch system. See
+Arch has the newest Hyprland, and TuxBridge can add it to an Arch system. See
 [The Hyprland desktop](hyprland.md).
 
 ## Common problems

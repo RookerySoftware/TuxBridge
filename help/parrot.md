@@ -8,7 +8,7 @@ order: 47
 # Parrot Security
 
 Parrot (Parrot OS) is a Debian-based Linux made for security work, privacy and programming. It
-is similar to Kali, with a calmer, everyday feel. Pengi installs **Parrot Core**, a small
+is similar to Kali, with a calmer, everyday feel. TuxBridge installs **Parrot Core**, a small
 base, and you add the tool groups you want. Like Kali, it updates continuously.
 
 > Only test computers, networks and accounts that are yours, or that you have written
@@ -62,7 +62,7 @@ Both are Debian-based and have mostly the same tools.
 - **Kali** is the industry standard, and most course material and write-ups use it.
 - **Parrot** adds privacy and development tools, and is pleasant as a daily system.
 
-Many people keep both. With Pengi each is a separate system, so neither gets in the way of
+Many people keep both. With TuxBridge each is a separate system, so neither gets in the way of
 the other.
 
 ## What people use it for

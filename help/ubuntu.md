@@ -8,7 +8,7 @@ order: 40
 # Ubuntu
 
 Ubuntu is the Linux most guides and answers online are written for, so help is easy to find.
-Pengi installs the **LTS** release (Long Term Support), which gets security updates for five
+TuxBridge installs the **LTS** release (Long Term Support), which gets security updates for five
 years; a new LTS comes every two years, in April of even years (24.04, 26.04…). Ubuntu is built
 on Debian, and Linux Mint is built on Ubuntu, so what you learn here works there too.
 
@@ -99,7 +99,7 @@ nothing here: Windows handles them.
 
 ## Services and servers
 
-Ubuntu is the usual base for servers, and Pengi turns on systemd, so services work as on a
+Ubuntu is the usual base for servers, and TuxBridge turns on systemd, so services work as on a
 real server:
 
 ```bash

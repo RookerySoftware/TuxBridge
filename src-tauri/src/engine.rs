@@ -1,5 +1,5 @@
 //! The engine: hyprland-wsl's Linux side, bundled with the app (src-tauri/engine, filled by
-//! scripts/sync-engine.ps1). It is copied once per version into %LOCALAPPDATA%\Pengi\engine,
+//! scripts/sync-engine.ps1). It is copied once per version into %LOCALAPPDATA%\TuxBridge\engine,
 //! a folder every distro reaches under /mnt, and run from there.
 
 use std::path::{Path, PathBuf};
@@ -10,7 +10,7 @@ use crate::paths;
 
 fn bundled(app: &AppHandle) -> anyhow::Result<PathBuf> {
     let dir = app.path().resource_dir()?.join("engine");
-    anyhow::ensure!(dir.join("install.sh").exists(), "the app's engine files are missing; reinstall Pengi");
+    anyhow::ensure!(dir.join("install.sh").exists(), "the app's engine files are missing; reinstall TuxBridge");
     Ok(dir)
 }
 
@@ -53,12 +53,12 @@ pub fn prepare(app: &AppHandle) -> anyhow::Result<String> {
     unpack(&source, &paths::data_dir().join("engine").join(version(&source)))
 }
 
-/// Pengi's own Linux scripts (src-tauri/linux: the distros' own desktops), as seen from inside
+/// TuxBridge's own Linux scripts (src-tauri/linux: the distros' own desktops), as seen from inside
 /// WSL. Named after a hash of their contents, so a changed script is never served from an old copy.
 pub fn prepare_linux(app: &AppHandle) -> anyhow::Result<String> {
     use sha2::{Digest, Sha256};
     let source = app.path().resource_dir()?.join("linux");
-    anyhow::ensure!(source.join("desktop-start.sh").exists(), "the app's desktop files are missing; reinstall Pengi");
+    anyhow::ensure!(source.join("desktop-start.sh").exists(), "the app's desktop files are missing; reinstall TuxBridge");
     let mut names: Vec<_> = std::fs::read_dir(&source)?.flatten().map(|e| e.path()).collect();
     names.sort();
     let mut hash = Sha256::new();

@@ -88,7 +88,7 @@ wsl --import <system> D:\WSL\<system> D:\backup.tar
 
 After an import, set your user as the default again (see [The wsl command](wsl-commands.md)).
 
-**For new systems:** Pengi's **Settings → Folder for new systems**, or **More options** in the
+**For new systems:** TuxBridge's **Settings → Folder for new systems**, or **More options** in the
 install form.
 
 ## The disk is full

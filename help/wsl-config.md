@@ -15,7 +15,7 @@ WSL has two settings files:
 | **wsl.conf** | Inside each system: `/etc/wsl.conf` | That system only (systemd, drives, user, PATH) |
 
 Both are plain text with `[sections]` and `key=value` lines. **Changes apply after**
-`wsl --shutdown` (or **Restart WSL** in Pengi) and opening the system again.
+`wsl --shutdown` (or **Restart WSL** in TuxBridge) and opening the system again.
 
 Microsoft's **WSL Settings** app (search for it in the Start menu) edits `.wslconfig` with a
 window, if you prefer.
@@ -63,7 +63,7 @@ sudo nano /etc/wsl.conf
 
 ```ini
 [boot]
-# run systemd (Pengi sets this for its systems)
+# run systemd (TuxBridge sets this for its systems)
 systemd=true
 
 [user]
@@ -92,7 +92,7 @@ generateHosts=true
 generateResolvConf=true
 ```
 
-Then `wsl --terminate <system>` (or **Stop** in Pengi) and open it again.
+Then `wsl --terminate <system>` (or **Stop** in TuxBridge) and open it again.
 
 ### Common changes
 
@@ -106,7 +106,7 @@ Then `wsl --terminate <system>` (or **Stop** in Pengi) and open it again.
 
 ## Systemd
 
-systemd starts services (databases, Docker, SSH) and timers. Pengi turns it on for the systems
+systemd starts services (databases, Docker, SSH) and timers. TuxBridge turns it on for the systems
 it installs. Check with:
 
 ```bash

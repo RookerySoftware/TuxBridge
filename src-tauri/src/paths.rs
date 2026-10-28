@@ -1,16 +1,23 @@
-//! Where Pengi keeps its files, and how a Windows path looks from inside WSL.
+//! Where TuxBridge keeps its files, and how a Windows path looks from inside WSL.
 
 use std::path::{Path, PathBuf};
 
-/// %LOCALAPPDATA%\Pengi: settings, logs, downloads, the unpacked engine. A PC that ran Pengi
-/// under its earlier name, EasyWSL, keeps %LOCALAPPDATA%\EasyWSL: its systems' disks, Docker's
-/// certificates and the docker command's place on the PATH all point there, so it isn't moved.
+/// The names TuxBridge had before, newest first. Their data folders stay where they are.
+pub const EARLIER_NAMES: [&str; 2] = ["Pengi", "EasyWSL"];
+
+/// %LOCALAPPDATA%\TuxBridge: settings, logs, downloads, the unpacked engine. A PC that ran TuxBridge
+/// under an earlier name keeps that name's folder (%LOCALAPPDATA%\EasyWSL, say): its systems'
+/// disks, Docker's certificates and the docker command's place on the PATH all point there, so it
+/// isn't moved.
 pub fn data_dir() -> PathBuf {
     static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
     DIR.get_or_init(|| {
         let local = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from(r"C:\Users\Public"));
-        let (new, old) = (local.join("Pengi"), local.join("EasyWSL"));
-        if !new.join("state.json").exists() && old.join("state.json").exists() { old } else { new }
+        let new = local.join("TuxBridge");
+        if new.join("state.json").exists() {
+            return new;
+        }
+        EARLIER_NAMES.iter().map(|n| local.join(n)).find(|d| d.join("state.json").exists()).unwrap_or(new)
     })
     .clone()
 }

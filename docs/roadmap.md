@@ -1,7 +1,7 @@
 # Roadmap
 
-Pengi: Linux on Windows with as little friction and foreknowledge as possible, for people
-who have never used WSL, Linux or a command line. Called Pengi since 2026-10-28 (formerly EasyWSL).
+TuxBridge: Linux on Windows with as little friction and foreknowledge as possible, for people
+who have never used WSL, Linux or a command line. Called TuxBridge since 2026-10-28 (formerly EasyWSL, briefly Pengi). Free, to be open-sourced once finalized.
 
 ## Phase 1: the app and WSL (done)
 
@@ -12,7 +12,7 @@ who have never used WSL, Linux or a command line. Called Pengi since 2026-10-28 
   Hyprland desktop, stop, remove, add Hyprland later
 - Get Linux: a gallery of distros, described for newcomers; install with a name, an account
   and a "Use the Hyprland desktop" checkbox; progress in plain steps, a log for bug reports
-- Desktops (Hyprland, GNOME, Cinnamon, Xfce) in Pengi's own viewer: no network, no VNC
+- Desktops (Hyprland, GNOME, Cinnamon, Xfce) in TuxBridge's own viewer: no network, no VNC
   (docs/desktops.md)
 - Settings: where new systems go, full screen, resolution and frame rate
 
@@ -63,12 +63,12 @@ who have never used WSL, Linux or a command line. Called Pengi since 2026-10-28 
 ## Phase 5: release
 
 - Signed installer, auto-update, winget
-- Final name: done, **Pengi** (trademarks for Pengi and Pip still to register)
+- Final name: done, **TuxBridge** (trademarks for TuxBridge and Pip still to register)
 
 ## Phase 6: local AI (started early, see docs/assistant.md)
 
-- Done: the Assistant page, an optional local model (Qwen 3.5 on Pengi's own Ollama) that
+- Done: the Assistant page, an optional local model (Qwen 3.5 on TuxBridge's own Ollama) that
   answers from the guides, a description of the app and the PC's live state; "Ask the
-  assistant" on failed tasks; an Pengi skill for Claude Code, Codex and claude.ai
+  assistant" on failed tasks; a TuxBridge skill for Claude Code, Codex and claude.ai
 - Next: let the assistant act (with the person's OK: update a system, start a container),
   embeddings instead of keyword search when the guides grow, AMD/Intel graphics detection

@@ -45,7 +45,7 @@ sudo systemctl start ssh    # start it now
 sudo systemctl enable ssh   # start it automatically in future
 ```
 
-WSL turns systemd on for systems made by Pengi. In a very small or imported system without
+WSL turns systemd on for systems made by TuxBridge. In a very small or imported system without
 systemd, start background programs yourself, or with the service's own command.
 
 ## Memory and disk

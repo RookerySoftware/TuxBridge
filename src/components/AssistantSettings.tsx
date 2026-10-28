@@ -22,7 +22,7 @@ export default function AssistantSettings() {
       <h2 className="font-display font-semibold">Ask Pip (the AI)</h2>
       {!status.installed ? (
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted">Not installed. It is an AI on this PC that answers questions about Pengi, Linux, WSL, Windows and Docker.</p>
+          <p className="text-sm text-muted">Not installed. It is an AI on this PC that answers questions about TuxBridge, Linux, WSL, Windows and Docker.</p>
           <Button icon={<Sparkles className="size-4" />} onClick={openAssistant}>
             Set it up
           </Button>

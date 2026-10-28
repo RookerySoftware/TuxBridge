@@ -60,7 +60,7 @@ run)
         exit 4
         ;;
     *)
-        echo "this system has no package manager Pengi knows" >&2
+        echo "this system has no package manager TuxBridge knows" >&2
         exit 3
         ;;
     esac

@@ -7,7 +7,7 @@ order: 83
 
 # Frequently asked questions
 
-## About Pengi and WSL
+## About TuxBridge and WSL
 
 **Is this a virtual machine? Will it slow down my PC?**
 WSL 2 runs Linux in a small virtual machine that Windows manages. It uses memory only while a
@@ -18,19 +18,19 @@ No. Linux systems are kept apart from Windows. The worst case is a broken Linux 
 remove and install again in minutes. Linux *can* change files on your Windows drives under
 `/mnt/c`, like any program you run, so be careful with `rm` there.
 
-**Do I need to keep Pengi open?**
+**Do I need to keep TuxBridge open?**
 No. Systems, terminals and Docker keep working without it (`wsl` in PowerShell, or Windows
-Terminal's tabs); open Pengi when you want its buttons, for example to open a desktop.
+Terminal's tabs); open TuxBridge when you want its buttons, for example to open a desktop.
 
 **Where are my systems stored?**
 Each in its own folder with one virtual disk file, in the folder chosen when installing
 (**Settings → Folder for new systems**). See [Disk space and moving systems](disk-space.md).
 
-**Can I use systems installed without Pengi?**
+**Can I use systems installed without TuxBridge?**
 Yes. My systems shows every system on the PC, including ones from the Microsoft Store or
 `wsl --install`.
 
-**Does uninstalling Pengi remove my systems?**
+**Does uninstalling TuxBridge remove my systems?**
 No. They stay in WSL; remove them first in My systems if you want them gone.
 
 ## Choosing

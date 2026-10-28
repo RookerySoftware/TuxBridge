@@ -1,13 +1,13 @@
 ---
 title: The wsl command
-summary: Everything Pengi's buttons do, from PowerShell: list, start, stop, export, import, move, update.
+summary: Everything TuxBridge's buttons do, from PowerShell: list, start, stop, export, import, move, update.
 section: WSL and Windows
 order: 50
 ---
 
 # The wsl command
 
-Everything Pengi does goes through `wsl.exe`, which you can also use yourself in PowerShell or
+Everything TuxBridge does goes through `wsl.exe`, which you can also use yourself in PowerShell or
 Windows Terminal. Handy for scripts, or when you want to know what's happening.
 
 ## Seeing what is there
@@ -35,7 +35,7 @@ not. In Windows Terminal, each system also appears in the **new tab** menu.
 ## Stopping
 
 ```powershell
-wsl --terminate Ubuntu      # stop one system (like Stop in Pengi; short: -t)
+wsl --terminate Ubuntu      # stop one system (like Stop in TuxBridge; short: -t)
 wsl --shutdown              # stop every system and WSL itself (like Restart WSL)
 ```
 
@@ -44,7 +44,7 @@ wsl --shutdown              # stop every system and WSL itself (like Restart WSL
 ## The default system
 
 ```powershell
-wsl --set-default Ubuntu    # what plain `wsl` opens (short: -s; Make default in Pengi)
+wsl --set-default Ubuntu    # what plain `wsl` opens (short: -s; Make default in TuxBridge)
 ```
 
 ## Backing up and moving systems
@@ -73,7 +73,7 @@ big systems.
 wsl --unregister Ubuntu     # deletes the system and EVERYTHING in it, at once, no Recycle Bin
 ```
 
-This is what **Remove** in Pengi does. Copy what you want to keep first.
+This is what **Remove** in TuxBridge does. Copy what you want to keep first.
 
 ## Updating WSL
 
@@ -90,7 +90,7 @@ wsl --set-version Ubuntu 2      # convert a system to WSL 2 (takes a while)
 wsl --set-default-version 2     # new systems use WSL 2
 ```
 
-Pengi uses WSL 2, which runs a real Linux kernel and is needed for Docker, desktops and
+TuxBridge uses WSL 2, which runs a real Linux kernel and is needed for Docker, desktops and
 systemd. WSL 1 only makes sense for special cases.
 
 ## Disks and USB
@@ -116,5 +116,5 @@ Copy-Item \\wsl.localhost\Ubuntu\home\you\report.pdf $HOME\Desktop
 | `There is no distribution with the supplied name` | The name is wrong: check `wsl -l -v` (names are as shown there). |
 | `WSL_E_DEFAULT_DISTRO_NOT_FOUND` | No default: `wsl --set-default <name>`. |
 | `HCS_E_CONNECTION_TIMEOUT` or a hang | WSL is stuck: `wsl --shutdown`, or restart Windows. |
-| `0x80370102` | Virtualization is off: turn it on in the PC's BIOS/UEFI (Pengi's check explains how). |
+| `0x80370102` | Virtualization is off: turn it on in the PC's BIOS/UEFI (TuxBridge's check explains how). |
 | `0x8000000d` on `--import` | The `.tar` file is damaged or incomplete. |

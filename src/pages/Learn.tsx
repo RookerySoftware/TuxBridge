@@ -218,7 +218,7 @@ function QuestView({ quest, distros, solved, onSolve, onBack, onGetLinux }: {
         ) : (
           <>
             <p className="text-sm text-muted">
-              Pengi builds a practice folder (<code className="rounded bg-surface-2 px-1 font-mono text-[13px]">{quest.folder}</code>) in your
+              TuxBridge builds a practice folder (<code className="rounded bg-surface-2 px-1 font-mono text-[13px]">{quest.folder}</code>) in your
               system and opens a terminal there. Then solve each challenge below and type in the flags you find.
             </p>
             <div className="flex flex-wrap items-center gap-2">

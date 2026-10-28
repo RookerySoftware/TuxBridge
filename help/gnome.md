@@ -54,7 +54,7 @@ The menu at the **top right** (network, sound, power icons) has **Settings**. Us
 
 - **Appearance:** light or dark style, accent colour, the dock's position and size (Ubuntu).
 - **Background:** the wallpaper.
-- **Displays:** scaling (in Pengi, size is set by the window; see
+- **Displays:** scaling (in TuxBridge, size is set by the window; see
   [Using a desktop window](desktop-window.md)).
 - **Keyboard:** layouts and shortcuts.
 
