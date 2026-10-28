@@ -46,6 +46,9 @@
       "../src/assistant/knowledge.md": "assistant/knowledge.md"
     },
     "shortDescription": "Linux on Windows, made easy",
+    "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper" }
+    },
     "publisher": "ItsOverk1ll"
   }
 }
