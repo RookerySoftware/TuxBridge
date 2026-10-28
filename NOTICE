@@ -1,0 +1,15 @@
+TuxBridge
+Copyright 2026 Rookery Software
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes software developed by others, each under its own licence; they are listed with
+their licences and sources in THIRD-PARTY-NOTICES.md.
+
+"TuxBridge", "Rookery Software" and Pip, the penguin mascot (its name and artwork), are
+trademarks of Rookery Software. The Apache License does not grant permission to use them
+(section 6), except to describe where the software comes from. Forks and other versions must
+use their own name and logo.
+
+Linux® is the registered trademark of Linus Torvalds. Windows and WSL are trademarks of
+Microsoft. The names of the Linux distributions belong to their projects.

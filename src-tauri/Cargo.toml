@@ -1,6 +1,7 @@
 [package]
 name = "tuxbridge"
 version = "0.1.0"
+license = "Apache-2.0"
 description = "Linux on Windows, made easy"
 authors = ["Rookery Software"]
 edition = "2024"

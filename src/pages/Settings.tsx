@@ -41,7 +41,10 @@ function About({ readiness }: { readiness: Readiness }) {
           Linux® is the registered trademark of Linus Torvalds. Windows and WSL are trademarks of Microsoft. The names of the
           Linux systems belong to their projects; TuxBridge is independent and not affiliated with them.
         </p>
-        <p>© 2026 Rookery Software. Pip is Rookery Software's own penguin.</p>
+        <p>
+          © 2026 Rookery Software. Open source under the Apache License 2.0. TuxBridge and Pip, Rookery Software's own penguin,
+          are trademarks of Rookery Software.
+        </p>
       </div>
     </Card>
   );

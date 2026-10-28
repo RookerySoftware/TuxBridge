@@ -103,3 +103,12 @@ in `src-tauri/engine/VERSION`. Commit the result.
 | `src-tauri/linux/` | TuxBridge's scripts inside Linux: desktops, the Docker engine and client |
 | `src-tauri/src/jobs.rs` | Long tasks with steps and a log |
 | `src/` | The window (React, Tailwind) |
+
+## Licence
+
+TuxBridge is licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Rookery Software;
+see [NOTICE](NOTICE). The libraries it uses are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+"TuxBridge", "Rookery Software" and Pip (the penguin's name and artwork) are trademarks of
+Rookery Software and are not covered by the licence: forks need a name and logo of their own.

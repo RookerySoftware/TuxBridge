@@ -1,6 +1,7 @@
 [package]
 name = "easywsl-agent"
 version = "0.1.0"
+license = "Apache-2.0"
 edition = "2024"
 description = "Runs inside Linux: hands the desktop to the TuxBridge viewer and its input to the desktop"
 

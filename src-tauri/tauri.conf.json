@@ -44,7 +44,9 @@
       "skill/": "skill/",
       "../help/": "help/",
       "../src/assistant/knowledge.md": "assistant/knowledge.md",
-      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md",
+      "../LICENSE": "LICENSE.txt",
+      "../NOTICE": "NOTICE.txt"
     },
     "shortDescription": "Linux on Windows, made easy",
     "windows": {

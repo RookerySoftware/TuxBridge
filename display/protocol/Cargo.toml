@@ -1,6 +1,7 @@
 [package]
 name = "easywsl-protocol"
 version = "0.1.0"
+license = "Apache-2.0"
 edition = "2024"
 description = "Messages between the TuxBridge display agent (Linux) and viewer (Windows)"
 

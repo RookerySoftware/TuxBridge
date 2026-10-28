@@ -1,6 +1,7 @@
 [package]
 name = "easywsl-viewer"
 version = "0.1.0"
+license = "Apache-2.0"
 edition = "2024"
 description = "A window on Windows showing a Linux desktop from the TuxBridge agent"
 
