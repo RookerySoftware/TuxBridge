@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4 (pre-release), 2026-10-28
+
+- **Fixed:** the Windows key could still open the Start menu in a desktop window. The desktop's
+  log now says what happened to the first presses, to track down any case left.
+
 ## 0.1.3 (pre-release), 2026-10-28
 
 - **Fixed:** updating Omarchy opened a broken second terminal tab ("cannot find the file

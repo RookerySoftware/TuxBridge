@@ -32,7 +32,24 @@ pub fn set_window(window: &winit::window::Window) {
     }
 }
 
+/// What the hook did with the first presses, for the desktop's log (written off the hook's thread,
+/// for the same reason as KEYS).
+static NOTES: OnceLock<Sender<String>> = OnceLock::new();
+static NOTED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+fn note(line: String) {
+    if NOTED.fetch_add(1, Ordering::SeqCst) < 40 {
+        if let Some(notes) = NOTES.get() {
+            let _ = notes.send(line);
+        }
+    }
+}
+
 fn start_sending(sink: InputSink) {
+    let (notes, lines) = std::sync::mpsc::channel::<String>();
+    if NOTES.set(notes).is_ok() {
+        std::thread::spawn(move || lines.into_iter().for_each(|line| eprintln!("{line}")));
+    }
     let (keys, queue) = std::sync::mpsc::channel();
     if KEYS.set(keys).is_ok() {
         std::thread::spawn(move || queue.into_iter().for_each(|input| sink.send(input)));
@@ -44,10 +61,13 @@ pub fn install(sink: InputSink) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, SetWindowsHookExW, WH_KEYBOARD_LL};
     start_sending(sink);
     std::thread::spawn(|| unsafe {
-        let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), std::ptr::null_mut(), 0);
+        let module = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
+        let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), module, 0);
         if hook.is_null() {
+            eprintln!("viewer: the Windows key stays with Windows (keyboard hook refused, error {})", windows_sys::Win32::Foundation::GetLastError());
             return;
         }
+        eprintln!("viewer: keyboard hook installed");
         // A low-level hook runs on the thread that installed it, which needs a message loop.
         let mut msg: MSG = std::mem::zeroed();
         while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {}
@@ -66,16 +86,26 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: usize, lparam: isize)
         CallNextHookEx, GetForegroundWindow, HC_ACTION, KBDLLHOOKSTRUCT, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
     unsafe {
-        if code == HC_ACTION as i32 && FOCUSED.load(Ordering::SeqCst) && GetForegroundWindow() as isize == WINDOW.load(Ordering::SeqCst) {
+        if code == HC_ACTION as i32 {
             let info = &*(lparam as *const KBDLLHOOKSTRUCT);
             let evdev = match info.vkCode as u16 {
                 VK_LWIN => Some(KEY_LEFTMETA),
                 VK_RWIN => Some(KEY_RIGHTMETA),
                 _ => None,
             };
-            if let (Some(evdev), Some(keys)) = (evdev, KEYS.get()) {
-                let pressed = matches!(wparam as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
-                if pressed || matches!(wparam as u32, WM_KEYUP | WM_SYSKEYUP) {
+            let pressed = matches!(wparam as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
+            let released = matches!(wparam as u32, WM_KEYUP | WM_SYSKEYUP);
+            if let (Some(evdev), Some(keys), true) = (evdev, KEYS.get(), pressed || released) {
+                // Windows' own word on which window is in front; winit's focus events alone can
+                // miss the window being active from the start.
+                let ours = GetForegroundWindow() as isize == WINDOW.load(Ordering::SeqCst);
+                note(format!(
+                    "viewer: Windows key {}: viewer in front {ours}, focused {}, {}",
+                    if pressed { "down" } else { "up" },
+                    FOCUSED.load(Ordering::SeqCst),
+                    if ours { "sent to Linux" } else { "left to Windows" },
+                ));
+                if ours {
                     let _ = keys.send(Input::Key { code: evdev, pressed });
                     return 1;
                 }
