@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (pre-release), 2026-10-28
+
+- **Fixed:** on a PC that never had an earlier test build, TuxBridge closed as soon as you started
+  installing any system. Installing works again, and 0.1.1's leftovers from it are tidied away.
+
 ## 0.1.1 (pre-release), 2026-10-28
 
 - **Update TuxBridge** in Settings: checks for a newer version, shows what's new, and installs it

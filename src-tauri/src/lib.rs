@@ -909,6 +909,9 @@ pub fn run() {
         .manage(desktop::Sessions::default())
         .setup(|app| {
             tray(app)?;
+            // 0.1.1 could leave a runaway copy inside its own folder; tidy it away in the background.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || engine::clean_up_runaway_copies(&handle));
             // Docker comes back with the app (after Windows restarted, say), when it was set up
             // and the setting is on.
             let handle = app.handle().clone();
