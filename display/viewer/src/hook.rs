@@ -14,10 +14,12 @@ use crate::keys::{KEY_LEFTMETA, KEY_RIGHTMETA};
 
 static FOCUSED: AtomicBool = AtomicBool::new(false);
 static WINDOW: AtomicIsize = AtomicIsize::new(0);
-/// Keys on their way to the desktop. The hook only queues them: Windows quietly removes a hook
-/// that keeps it waiting (about a second), and writing to Linux can wait that long when the
-/// desktop is busy. The Windows key would then open the Start menu until the desktop reopened.
-static KEYS: OnceLock<Sender<Input>> = OnceLock::new();
+/// Where the keys go: the viewer's input queue, which never makes the hook wait.
+static KEYS: OnceLock<InputSink> = OnceLock::new();
+/// Which Windows keys (left, right) Linux has been told are down. Windows repeats a held key's
+/// key-down, and Linux's keyboard state counts every one, so a single key-up would leave Super
+/// held there (arrows becoming Super+arrows, shortcuts misfiring): only the first goes through.
+static DOWN: [AtomicBool; 2] = [AtomicBool::new(false), AtomicBool::new(false)];
 
 pub fn set_focused(focused: bool) {
     FOCUSED.store(focused, Ordering::SeqCst);
@@ -32,8 +34,19 @@ pub fn set_window(window: &winit::window::Window) {
     }
 }
 
+/// Tells Linux the Windows keys are up, when the window loses focus with one held.
+pub fn release() {
+    for (down, code) in DOWN.iter().zip([KEY_LEFTMETA, KEY_RIGHTMETA]) {
+        if down.swap(false, Ordering::SeqCst) {
+            if let Some(keys) = KEYS.get() {
+                keys.send(Input::Key { code, pressed: false });
+            }
+        }
+    }
+}
+
 /// What the hook did with the first presses, for the desktop's log (written off the hook's thread,
-/// for the same reason as KEYS).
+/// so the hook never waits on it).
 static NOTES: OnceLock<Sender<String>> = OnceLock::new();
 static NOTED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
@@ -50,10 +63,7 @@ fn start_sending(sink: InputSink) {
     if NOTES.set(notes).is_ok() {
         std::thread::spawn(move || lines.into_iter().for_each(|line| eprintln!("{line}")));
     }
-    let (keys, queue) = std::sync::mpsc::channel();
-    if KEYS.set(keys).is_ok() {
-        std::thread::spawn(move || queue.into_iter().for_each(|input| sink.send(input)));
-    }
+    let _ = KEYS.set(sink);
 }
 
 #[cfg(windows)]
@@ -88,26 +98,32 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: usize, lparam: isize)
     unsafe {
         if code == HC_ACTION as i32 {
             let info = &*(lparam as *const KBDLLHOOKSTRUCT);
-            let evdev = match info.vkCode as u16 {
-                VK_LWIN => Some(KEY_LEFTMETA),
-                VK_RWIN => Some(KEY_RIGHTMETA),
-                _ => None,
+            let (index, evdev) = match info.vkCode as u16 {
+                VK_LWIN => (0, KEY_LEFTMETA),
+                VK_RWIN => (1, KEY_RIGHTMETA),
+                _ => return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam),
             };
             let pressed = matches!(wparam as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
             let released = matches!(wparam as u32, WM_KEYUP | WM_SYSKEYUP);
-            if let (Some(evdev), Some(keys), true) = (evdev, KEYS.get(), pressed || released) {
+            if let (Some(keys), true) = (KEYS.get(), pressed || released) {
                 // Windows' own word on which window is in front; winit's focus events alone can
                 // miss the window being active from the start.
                 let ours = GetForegroundWindow() as isize == WINDOW.load(Ordering::SeqCst);
-                note(format!(
-                    "viewer: Windows key {}: viewer in front {ours}, focused {}, {}",
-                    if pressed { "down" } else { "up" },
-                    FOCUSED.load(Ordering::SeqCst),
-                    if ours { "sent to Linux" } else { "left to Windows" },
-                ));
-                if ours {
-                    let _ = keys.send(Input::Key { code: evdev, pressed });
+                if pressed && ours {
+                    if !DOWN[index].swap(true, Ordering::SeqCst) {
+                        note(format!("viewer: Windows key down: focused {}, sent to Linux", FOCUSED.load(Ordering::SeqCst)));
+                        keys.send(Input::Key { code: evdev, pressed: true });
+                    }
                     return 1;
+                }
+                // A key Linux has down is released there, wherever the window is by then.
+                if released && DOWN[index].swap(false, Ordering::SeqCst) {
+                    note("viewer: Windows key up: sent to Linux".into());
+                    keys.send(Input::Key { code: evdev, pressed: false });
+                    return 1;
+                }
+                if pressed {
+                    note(format!("viewer: Windows key down: viewer not in front (focused {}), left to Windows", FOCUSED.load(Ordering::SeqCst)));
                 }
             }
         }

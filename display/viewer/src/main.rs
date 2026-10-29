@@ -21,6 +21,7 @@ use std::io::{BufReader, BufWriter, Write};
 use std::num::NonZeroU32;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::rc::Rc;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use easywsl_protocol::{Event, Input, VERSION, apply_tiles};
@@ -52,20 +53,33 @@ pub enum Message {
     HintOver,
 }
 
-/// Writes input to the agent; shared with the keyboard hook's thread.
+/// Input on its way to the agent, in one queue (so a key never overtakes the one before it),
+/// written by a thread of its own: sending never waits for Linux, which the keyboard hook's
+/// thread must not (Windows quietly removes a hook that keeps it waiting).
 #[derive(Clone)]
-pub struct InputSink(Arc<Mutex<Option<BufWriter<ChildStdin>>>>);
+pub struct InputSink(Arc<Mutex<Option<Sender<Input>>>>);
 
 impl InputSink {
+    fn new(stdin: ChildStdin) -> InputSink {
+        let (queue, inputs) = std::sync::mpsc::channel::<Input>();
+        std::thread::spawn(move || {
+            let mut w = BufWriter::new(stdin);
+            for input in inputs {
+                if input.write(&mut w).and_then(|_| w.flush()).is_err() {
+                    break;
+                }
+            }
+        });
+        InputSink(Arc::new(Mutex::new(Some(queue))))
+    }
+
     pub fn send(&self, input: Input) {
-        let mut w = self.0.lock().unwrap();
-        if let Some(w) = w.as_mut() {
-            let _ = input.write(w);
-            let _ = w.flush();
+        if let Some(queue) = self.0.lock().unwrap().as_ref() {
+            let _ = queue.send(input);
         }
     }
 
-    /// Ends the agent's input, which tells it to end the session.
+    /// Ends the agent's input (once what is queued is written), which tells it to end the session.
     fn close(&self) {
         self.0.lock().unwrap().take();
     }
@@ -152,6 +166,7 @@ impl App {
         for code in self.held.drain() {
             self.input.send(Input::Key { code, pressed: false });
         }
+        hook::release();
         self.ctrl = false;
         self.alt = false;
     }
@@ -159,6 +174,10 @@ impl App {
     fn key(&mut self, event: &KeyEvent) {
         let PhysicalKey::Code(code) = event.physical_key else { return };
         let pressed = event.state == ElementState::Pressed;
+        // Linux repeats held keys itself; Windows' repeats would count as more presses there.
+        if event.repeat {
+            return;
+        }
         match code {
             KeyCode::ControlLeft | KeyCode::ControlRight => self.ctrl = pressed,
             KeyCode::AltLeft | KeyCode::AltRight => self.alt = pressed,
@@ -449,7 +468,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let input = InputSink(Arc::new(Mutex::new(Some(BufWriter::new(child.stdin.take().unwrap())))));
+    let input = InputSink::new(child.stdin.take().unwrap());
     let stdout = child.stdout.take().unwrap();
     let desktop = Arc::new(Mutex::new(Desktop { width: 0, height: 0, pixels: Vec::new() }));
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 (pre-release), 2026-10-28
+
+- **Fixed:** in a desktop window, holding the Windows key left Super stuck down in Linux, so
+  Super shortcuts misfired and the arrow keys acted as Super+arrows (moving between windows
+  instead of through a list). Held keys now count once, and a key held when the window loses
+  focus is let go in Linux too.
+
 ## 0.1.4 (pre-release), 2026-10-28
 
 - **Fixed:** the Windows key could still open the Start menu in a desktop window. The desktop's
